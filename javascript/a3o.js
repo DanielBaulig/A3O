@@ -3,12 +3,12 @@ function error(message)
 	alert(message);
 }
 
-function drawPolygon(canvasContext, vertices, fillColor = false)
+function drawPolygon(canvasContext, vertices, fillColor)
 {
 	if (vertices.length() > 0)
 	{
 		canvasContext.strokeStyle = 'black';
-		if (fillColor)
+		if (fillColor != null)
 		{
 			canvasContext.fillStyle = fillColor;
 		}
@@ -34,7 +34,7 @@ function drawPolygon(canvasContext, vertices, fillColor = false)
 			}
 		}
 		canvasContext.endPath();
-		if (fillColor)
+		if (fillColor != null)
 		{
 			canvasContext.fill();
 		}

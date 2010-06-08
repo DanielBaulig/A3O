@@ -7,12 +7,10 @@
  <script src="javascript/a3o.js"></script>
  <script type="text/javascript">
    $(document).ready(function(){
-
      	$.getJSON('ajax.php', function(data) {
     	    $('#result').html(data);
 
     	    drawPolygon($("#map")[0].getContext('2d'), data, 'blue');
-    	  }
     	});
    });
  </script>
