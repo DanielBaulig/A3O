@@ -12,7 +12,7 @@
     	  success: function(data) {
     	    $('#result').html(data);
     	    alert('Load was performed.');
-    	    var map = $("#map").getContext('2d');
+    	    var map = $("#map")[0].getContext('2d');
     	    map.beginPath();
     	    var arr = eval( data );
     	    map.moveTo(0, 0);
