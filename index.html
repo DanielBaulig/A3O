@@ -4,33 +4,16 @@
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
 <title>Insert title here</title>
  <script src="http://jquery.com/src/jquery-latest.js"></script>
+ <script src="javascript/a3o.js"></script>
  <script type="text/javascript">
- Array.prototype.foreach = function( callback ) {
-	  for( var k=0; k<this .length; k++ ) {
-	    callback( k, this[ k ] );
-	  }
-	}
    $(document).ready(function(){
 
-     	$.ajax({
-    	  url: 'ajax.php',
-    	  success: function(data) {
+     	$.getJSON('ajax.php', function(data) {
     	    $('#result').html(data);
-    	    alert('Load was performed.');
-    	    var map = $("#map")[0].getContext('2d');
-    	    map.beginPath();
-    	    var arr = eval( data );
-    	    map.moveTo(0, 0);
-    	    arr.foreach( function(key, value) {
-        	    map.lineTo(value[0], value[1]);
-    	    });
-    	    map.closePath();
-    	    map.stroke();
+
+    	    drawPolygon($("#map")[0].getContext('2d'), data, 'blue');
     	  }
     	});
-     
-
-     
    });
  </script>
 
