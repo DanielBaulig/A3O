@@ -97,8 +97,8 @@ class Tile
 		{
 			$json .= '[ ' . $vertex[0] . ', ' . $vertex[1] . ' ], ';					
 		}
-		$json = trim($json, ',');
-		$json .= ']';
+		$json = trim($json, ', ');
+		$json .= ' ]';
 		$this->m_verticesJsonCache = $json;
 	}
 	
