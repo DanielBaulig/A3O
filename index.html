@@ -1,0 +1,38 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Insert title here</title>
+ <script src="http://jquery.com/src/jquery-latest.js"></script>
+ <script type="text/javascript">
+   $(document).ready(function(){
+
+     	$.ajax({
+    	  url: 'ajax.php',
+    	  success: function(data) {
+    	    $('#result').html(data);
+    	    alert('Load was performed.');
+    	    var map = $("#map");
+    	    map.beginPath();
+    	    var arr = eval( data );
+    	    map.moveTo(0, 0);
+    	    arr.foreach( function(key, value) {
+        	    map.lineTo(value[0], value[1]);
+    	    });
+    	    map.closePath();
+    	    map.stroke();
+    	  }
+    	});
+     
+
+     
+   });
+ </script>
+
+</head>
+<body>
+	<div id="result"></div>
+	<canvas height="800" widht="800" id="map">
+	</canvas>
+</body>
+</html>
