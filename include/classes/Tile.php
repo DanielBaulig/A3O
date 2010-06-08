@@ -73,10 +73,10 @@ class Tile
 		// DEBUG HACK
 		$this->id = 1;
 		
-		die('SELECT x, y FROM ' . TABLE_VERTICES . ' WHERE vertex_tile_id = :vertex_tile_id');
+		//die('SELECT x, y FROM ' . TABLE_VERTICES . ' WHERE vertex_tile_id = :vertex_tile_id');
 		
 		$this->m_loadVerticesPdoStatement = $this->m_pdo->prepare('SELECT x, y FROM ' . TABLE_VERTICES . ' WHERE vertex_tile_id = :vertex_tile_id;', array(PDO::ATTR_CURSOR => PDO::CURSOR_SCROLL));
-		$this->m_loadVerticesPdoStatement->bindParam(':vertex_title_id', $this->id, PDO::PARAM_INT);
+		$this->m_loadVerticesPdoStatement->bindParam(':vertex_tile_id', $this->id, PDO::PARAM_INT);
 	}
 	
 	/** Calculates the path to another tile using A*
