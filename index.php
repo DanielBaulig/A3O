@@ -19,40 +19,68 @@
 			die($e->getMessage());
 		}
 
-		$tiles = Tile::loadGameTiles($pdo, 1);
+		$tileFactory = new TileFactory($pdo, 1);
+		$tiles = $tileFactory->getAllTiles();
 
-		for($i = 0; $i < count($tiles); $i++)
+		$first = true;
+
+		foreach($tiles as &$tile)
 		{
-			echo $tiles[$i]->getTileAsJson() . ($i + 1 < count($tiles) ? ', ' : '');
+			if ( $first )
+			{
+				$first = false;
+			}
+			else
+			{
+				echo ',';
+			}
+			echo $tile->getTileAsJson();
 		}
 		
 	?>);
  
    $(document).ready(function(){
-     	/*$.getJSON('ajax.php', null, function(data) {
-         	console.log(data);
-    	    drawPolygon($("#map")[0].getContext('2d'), data, 'blue');
-    	    
-    	});*/
+   		var context = $("#map")[0].getContext('2d');
     	for (var i = 0; i < tiles.length; i++)
-   	    {
-   	    	var fill = null;
-   	    	if (tiles[i].type == 1)
-   	    	{
-   	    		fill = 'blue';
-   	    	}
-   	    	else
-   	    	{
-   	    		fill = 'white';
-   	    	}
-   	    	var context = $("#map")[0].getContext('2d');
-   	    	drawPolygon(context, tiles[i].vertices, fill);
-   	    	context.fillStyle = 'black';
-   	    	context.moveTo(tiles[i].center[0], tiles[i].center[1]);
-   	    	context.beginPath();
-   	    	context.arc(tiles[i].center[0], tiles[i].center[1], 5, 0, (Math.PI/180)*360, true);
-   	    	context.fill();
+   	    {   	    	
+   	    	drawTile(context, tiles[i]);
    	    }
+   	    
+   	    
+   	    $('#map').click( function (e) {
+   	    	var context = $("#map")[0].getContext('2d');
+   	    	var x = e.pageX - this.offsetLeft;
+   	    	var y = e.pageY - this.offsetTop;
+   	    	
+   	    	var candidates = new Array();
+   	    	
+   	    	for(var i = 0; i < tiles.length; i++)
+   	    	{
+   	    		if (x > tiles[i].boundingbox.upperleft[0]
+   	    			&& x < tiles[i].boundingbox.lowerright[0]
+   	    			&& y > tiles[i].boundingbox.upperleft[1]
+   	    		 	&& y < tiles[i].boundingbox.lowerright[1])
+   	    		{ 
+   	    			candidates.push(tiles[i]);
+   	    		}
+   	    	}
+   	    	
+   	    	if(candidates.length == 1)
+   	    	{
+   	    		drawPolygon(context, candidates[0].vertices, null, 'red');
+   	    	}
+   	    	else if(candidates.length > 1)
+   	    	{
+   	    		for(var i = 0; i < candidates.length; i++)
+   	    		{
+   	    			if (isPointInPolygon(candidates[i].vertices, x, y))
+   	    			{
+   	    				drawPolygon(context, candidates[i].vertices, null, 'red');
+   	    				break;
+   	    			}
+   	    		}
+   	    	}
+   	    });
    });
  </script>
 

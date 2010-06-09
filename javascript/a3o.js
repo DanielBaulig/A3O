@@ -3,14 +3,25 @@ function error(message)
 	alert(message);
 }
 
-function drawPolygon(canvasContext, vertices, fillColor)
+function drawPolygon(canvasContext, vertices, fillColor, strokeColor)
 {
 	if (vertices.length > 0)
 	{
-		canvasContext.strokeStyle = 'black';
+		if(strokeColor != null)
+		{
+			canvasContext.strokeStyle = strokeColor;
+		}
+		else
+		{
+			canvasContext.strokeStyle = 'black';
+		}
 		if (fillColor != null)
 		{
 			canvasContext.fillStyle = fillColor;
+		}
+		else
+		{
+			canvasContext.fillStyle = 'white';
 		}
 		
 		canvasContext.beginPath();
@@ -41,3 +52,35 @@ function drawPolygon(canvasContext, vertices, fillColor)
 		canvasContext.stroke();
 	}
 }
+
+function drawTile(canvasContext, tile)
+{
+	var fill = null;
+   	if (tile.type == 1)
+   	{
+   		fill = 'blue';
+   	}
+   	else
+   	{
+   		fill = 'white';
+   	}
+   	drawPolygon(canvasContext, tile.vertices, fill);
+   	canvasContext.fillStyle = 'black';
+   	canvasContext.moveTo(tile.center[0], tile.center[1]);
+   	canvasContext.beginPath();
+   	canvasContext.arc(tile.center[0], tile.center[1], 5, 0, 6.283185307179586, true);
+   	canvasContext.fill();
+}
+
+// based on the C-code from http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+function isPointInPolygon(vertices, x, y)
+{
+  var i, j, c = false;
+  for (i = 0, j = vertices.length-1; i < vertices.length; j = i++) {
+    if ( ((vertices[i][1]>y) != (vertices[j][1]>y)) &&
+	 (x < (vertices[j][0]-vertices[i][0]) * (y-vertices[i][1]) / (vertices[j][1]-vertices[i][1]) + vertices[i][0]) )
+       c = !c;
+  }
+  return c;
+}
+
