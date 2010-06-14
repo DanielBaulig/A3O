@@ -7,7 +7,9 @@ define('TABLE_TILE_VERTICES', 'tile_vertices');
 define('TABLE_BASETILES', 'base_tiles');
 define('TABLE_TILE_CONNECTIONS', 'tile_connections');
 
-//TODO: move prepared statements and pdo reference to class members and intlize using class method 'initialize' or smth 
+//TODO: move prepared statements and pdo reference to class members and intlize using class method 'initialize' or smth
+//TODO: introduce tile_vertex_json_cache_timestamp on base_tiles and vertex_timestamp on tile_vertices to recognize changes
+  
 
 
 //TODO: Refactor Base Class DatabaseFactory or similar ?
@@ -94,9 +96,10 @@ class TileFactory
 	{
 		$this->m_tilesPrecached = false;
 		$this->m_tileCache = array();
-		$this->m_loadAllTilesPdoStatement->execute();
+		
 		try
 		{
+			$this->m_loadAllTilesPdoStatement->execute();
 			while($row = $this->m_loadAllTilesPdoStatement->fetch(PDO::FETCH_ASSOC))
 			{
 				$this->m_tileCache[$row['tile_name']] = new Tile($this->m_pdo, $row);
@@ -371,6 +374,7 @@ class Tile
 	public function getTileAsJson()
 	{		
 		return '{"name":"' . $this->m_name . '"' .
+				',"owner":' . ( $this->getController() ? $this->getController() : 0 ) . 
 				',"vertices":' . $this->getVerticesAsJson() .		
 				',"center":' . $this->getCenterAsJson() .
 				',"type":' . $this->m_type .

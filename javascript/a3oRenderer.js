@@ -13,28 +13,6 @@ var Drawable = function( x, y )
 	};
 };
 
-var ShadowStyle = function ( color, offsetX, offsetY, blur)
-{
-	this.color = color;
-	this.offsetX = offsetX;
-	this.offsetY = offsetY;
-	this.blur = blur;
-	
-	this.apply = function( context )
-	{
-		context.save();
-		context.shadowColor = this.color;
-		context.shadowOffsetX = this.offsetX;
-		context.shadowOffsetY = this.offsetY;
-		context.shadowBlur = this.blur;
-	};
-	
-	this.unapply = function ( context )
-	{
-		context.restore();
-	};
-};
-
 var Sprite = function( image, x, y )
 {
 	this.super = Drawable;
@@ -48,7 +26,7 @@ var Sprite = function( image, x, y )
 
 var Path = function ( points, color, lineWidth, shadowColor )
 {
-	if (points != null && (points.length > 0))
+	if (points != null && (points.length > 1))
 	{
 		// see http://www.antigrain.com/research/bezier_interpolation/index.html
 		this.points = points;
@@ -65,29 +43,52 @@ var Path = function ( points, color, lineWidth, shadowColor )
 			var ab_mid_bc_mid = [ bc_mid[0] - ab_mid[0], bc_mid[1] - ab_mid[1] ];
 			var ab_mid_bc_mid_len = Math.sqrt( ab_mid_bc_mid[0]*ab_mid_bc_mid[0] + ab_mid_bc_mid[1]*ab_mid_bc_mid[1] );
 			var ratio =  ab_mid_bc_mid_len / (ab_len + bc_len);
-			/*console.log('ratio ' + ratio);
-			console.log('ab_mid_bc_mid ' + ab_mid_bc_mid);
-			console.log('ab ' + ab);
-			console.log('bc ' + bc);
-			console.log('ab_mid ' + ab_mid);
-			console.log('ab_len' + ab_len);
-			console.log('bc_mid '+ bc_mid);
-			console.log('bc_len '+ bc_len);
-			console.log('ab_mid_bc_mid '+ ab_mid_bc_mid);
-			console.log('ab_mid_bc_mid_len '+ ab_mid_bc_mid_len);*/
+			
+			//console.log ( 'ab_mid_bc_mid_len ' + ab_mid_bc_mid_len );
+			//console.log ( '(ab_len + bc_len) ' + (ab_len + bc_len) );
 			
 			var mid_mid = [ Math.floor(ab_mid[0] + ( (ab_mid_bc_mid[0] / ab_mid_bc_mid_len) * ratio * ab_len ) ) , Math.floor(ab_mid[1] + ( ( ab_mid_bc_mid[1] / ab_mid_bc_mid_len ) * ratio * ab_len ) )];
-			//console.log('mid_mid ', mid_mid);
-			//var b_mid_mid = [ this.points[i][0] - mid_mid[0], this.points[i][1] - mid_mid[1]  ];
 			var mid_mid_b = [ this.points[i][0] - mid_mid[0], this.points[i][1] - mid_mid[1]  ];
-			//console.log('mid_mid_b ', mid_mid_b);
-			//console.log('CONTROLPOINTS ' + [this.points[i-1][0] + ab_mid[0] + mid_mid_b[0], this.points[i-1][1] + ab_mid[1] + mid_mid_b[1]] );
+		
 			this.controlpoints.push( [ab_mid[0] + mid_mid_b[0], ab_mid[1] + mid_mid_b[1]] );
 			this.controlpoints.push( [bc_mid[0] + mid_mid_b[0], bc_mid[1] + mid_mid_b[1]] );
-			/*this.controlpoints.push( [ b_mid_mid[0] - ab_mid[0] + this.points[i][0], b_mid_mid[1] - ab_mid[1] + this.points[i][1]] );
-			this.controlpoints.push( [ b_mid_mid[0] - bc_mid[0] + this.points[i][0], b_mid_mid[1] - bc_mid[1] + this.points[i][1] ] );*/
 		}
 		this.controlpoints.push( this.points[this.points.length - 1] );
+		
+		var vectorFromLastPoint = [ this.controlpoints[this.controlpoints.length-2][0] - this.points[this.points.length-1][0], this.controlpoints[this.controlpoints.length-2][1] - this.points[this.points.length-1][1] ];
+		var vectorFromLastPointLen = Math.sqrt(vectorFromLastPoint[0] * vectorFromLastPoint[0] +  vectorFromLastPoint[1] * vectorFromLastPoint[1]);
+		var vectorFromLastPointLength20 = [ vectorFromLastPoint[0] / vectorFromLastPointLen * 20, vectorFromLastPoint[1] / vectorFromLastPointLen * 20 ];
+		
+		var orthogonalVectorX = null;
+		
+		if ( vectorFromLastPointLength20[0] != 0)
+		{
+			orthogonalVectorX = - (vectorFromLastPointLength20[1] * vectorFromLastPointLength20[1]) / vectorFromLastPointLength20[0];
+		}
+		else
+		{
+			//console.log('orthoY = ' + vectorFromLastPointLength20[1]);
+			orthogonalVectorX = 1000;
+		}
+		var orthogonalVector = [ orthogonalVectorX, vectorFromLastPointLength20[1] ];
+		
+		var orthogonalVectorLen = Math.sqrt(orthogonalVector[0]*orthogonalVector[0] +  orthogonalVector[1]*orthogonalVector[1]);
+		var orthogonalVectorLength10 = [ orthogonalVector[0] / orthogonalVectorLen * 10, orthogonalVector[1] / orthogonalVectorLen * 10 ];
+		
+		this.triangleCoords = [ 
+		                       		[
+		                       		 	this.points[this.points.length - 1][0] - vectorFromLastPointLength20[0] * 0.3, 
+		                       		 	this.points[this.points.length - 1][1] - vectorFromLastPointLength20[1] * 0.3
+		                       		],
+		                       		[
+		                       		 	vectorFromLastPointLength20[0]*0.7 + orthogonalVectorLength10[0] + this.points[this.points.length - 1][0],  
+		                       		 	vectorFromLastPointLength20[1]*0.7 + orthogonalVectorLength10[1] + this.points[this.points.length - 1][1]
+		                       		],
+		                       		[
+		                       		 	vectorFromLastPointLength20[0]*0.7 - orthogonalVectorLength10[0] + this.points[this.points.length - 1][0],  
+		                       		 	vectorFromLastPointLength20[1]*0.7 - orthogonalVectorLength10[1] + this.points[this.points.length - 1][1]
+		                       		]
+		                      ];
 	}
 	else
 	{
@@ -103,17 +104,16 @@ var Path = function ( points, color, lineWidth, shadowColor )
 		try
 		{
 			
-			context.fillStyle = color;
+			context.strokeStyle = color;
 			context.lineWidth = this.lineWidth;
 			context.shadowColor = shadowColor;
 			context.shadowOffsetX = 1;
 			context.shadowOffsetY = 1;
 			context.shadowBlur = 1;
 
-			context.beginPath();
-
 			if (this.points.length > 1)
 			{
+				context.beginPath();
 				context.moveTo( this.points[0][0], this.points[0][1] );
 				
 				for (var i = 1; i < this.points.length; i++)
@@ -124,9 +124,20 @@ var Path = function ( points, color, lineWidth, shadowColor )
 										   this.controlpoints[i*2-1][0], this.controlpoints[i*2-1][1], 
 										   this.points[i][0], this.points[i][1]);
 				}
+				context.stroke( );
+				context.beginPath( );
+				context.strokeStyle = 'black';
+				context.fillStyle = 'red';
+				context.lineWidth = 1.0;
+				context.moveTo ( this.triangleCoords[0][0], this.triangleCoords[0][1] );
+				context.lineTo ( this.triangleCoords[1][0], this.triangleCoords[1][1] );
+				context.lineTo ( this.triangleCoords[2][0], this.triangleCoords[2][1] );
+				context.closePath( );
+				//context.lineTo ( this.triangleCoords[0][0], this.triangleCoords[0][1] )
+				context.fill( );
 			}
 		
-			context.stroke( );
+
 			/*context.beginPath();
 			context.fillStyle = 'red';
 			for (var i = 0; i < this.controlpoints.length; i++ )
@@ -236,10 +247,8 @@ function Layer(renderer, index)
 	
 	this.addDrawable = function ( drawable, name )
 	{
-		if (name in this.drawables)
-		{
-			this.removeDrawable( name );
-		}
+		this.removeDrawable( name );
+		
 		this.drawables[name] = drawable;
 		drawable.layer = this;
 		this.drawablesCount++;
@@ -248,10 +257,13 @@ function Layer(renderer, index)
 	
 	this.removeDrawable = function ( name )
 	{
-		this.drawables[name] = null;
-		delete this.drawables[name];
-		this.drawablesCount--;
-		this.invalidate();
+		if ( name in this.drawables )
+		{
+			this.drawables[name] = null;
+			delete this.drawables[name];
+			this.drawablesCount--;
+			this.invalidate();
+		}
 	};
 	
 	this.clearDrawables = function ( )
@@ -270,10 +282,13 @@ var Renderer = function ( context )
 	this.layers = Array();
 	this.intervalHandle = null;
 	this.viewPortOffset = [ 0, 0 ];
+	this.viewPortZoom = 1.0;
 	this.needsRepaint = true;
+	this.isBufferungSuspended = false;
 	
 	this.loopInterval = 50;
 	
+	// TODO: Replace those for direct calls after profiling is done
 	this.putImageData = function(context, backgroundImage){context.putImageData( backgroundImage, 0, 0 );};
 	this.getImageData = function(context){return context.getImageData( 0, 0, context.canvas.width, context.canvas.height );};	
 	
@@ -304,23 +319,10 @@ var Renderer = function ( context )
 			var repaint = false;
 			var backgroundBuffer = null;
 			this.context.save();
-			this.context.translate( -this.viewPortOffset[0], -this.viewPortOffset[1] );
+			this.context.translate( - this.viewPortOffset[0], - this.viewPortOffset[1] );
+			this.context.scale( this.viewPortZoom, this.viewPortZoom );
 			for( var i = 0; i < this.layers.length; i++ )
 			{
-				/*// a previous layer requested repainting
-				if ( repaint )
-				{
-					// paint this layer over the previous one
-					console.log('Repainting layer ' + i + ' as follow up.');
-					this.layers[i].render( this.context, backgroundBuffer );
-				}
-				// this layer requests painting
-				else if ( repaint = this.layers[i].needsRepaint )
-				{
-					// paint this layer using the previous' layers image buffer
-					console.log('Repainting layer ' + i + ' as first (using backgroundBuffer).');
-					this.layers[i].render( this.context, backgroundBuffer );
-				}*/
 				if ( ! repaint && this.layers[i].needsRepaint )
 				{
 					//console.log ('found repaint request on layer ' + i);
@@ -332,18 +334,21 @@ var Renderer = function ( context )
 					else
 					{
 						//console.log('clearing rect, because no background buffer is available on layer ' + i);
-						this.context.clearRect( this.viewPortOffset[0], this.viewPortOffset[1], this.context.canvas.width, this.context.canvas.width );
+						this.context.clearRect( this.viewPortOffset[0] / this.viewPortZoom, this.viewPortOffset[1] / this.viewPortZoom, this.context.canvas.width / this.viewPortZoom, this.context.canvas.width  / this.viewPortZoom );
 					}
 				}
-				if ( repaint = (this.layers[i].needsRepaint || repaint) )
+				if ( repaint = ( this.layers[i].needsRepaint || repaint ) )
 				{
 					//console.log('rendering image on layer ' + i);
 					// if layer rendered something and it was not the last layer
 					if ( this.layers[i].render( this.context ) && ( i < (this.layers.length - 1) ) )
-					{
-						//console.log('getting image data on layer ' + i);
-						// save the new data
-						this.layers[i].currentImageData = this.getImageData( this.context );
+					{						
+						// save the new data if buffering isn't suspended
+						if ( ! this.isBufferungSuspended )
+						{
+							//console.log('getting image data on layer ' + i);
+							this.layers[i].currentImageData = this.getImageData( this.context );
+						}
 					}
 					else
 					{					
@@ -352,14 +357,52 @@ var Renderer = function ( context )
 				}
 				backgroundBuffer = this.layers[i].currentImageData;
 			}
-			this.context.restore();
+			this.context.restore( );
 			this.needsRepaint = false;
+		}
+	};
+	
+	this.setViewportZoom = function( zoom )
+	{
+		this.viewPortOffset[0] = this.viewPortOffset[0] * ( zoom / this.viewPortZoom );// * this.viewPortZoom;		
+		this.viewPortOffset[1] = this.viewPortOffset[1] * ( zoom / this.viewPortZoom );
+		
+		this.viewPortZoom = zoom;
+		
+		this.invalidateAll( );
+	};
+	
+	this.setViewportOffset = function( vector )
+	{
+		this.viewPortOffset[0] = vector[0];// * this.viewPortZoom;
+		this.viewPortOffset[1] = vector[1];// * this.viewPortZoom;
+		
+		this.invalidateAll( );
+	};
+	
+	this.invalidateAll = function( )
+	{
+		if ( this.layers.length > 0 )
+		{
+			this.layers[0].invalidate( );
 		}
 	};
 	
 	this.invalidate = function( )
 	{
 		this.needsRepaint = true;
+	};
+	
+	this.suspendBuffering = function( )
+	{
+		this.isBufferungSuspended = true;
+	};
+	
+	this.resumeBuffering = function( )
+	{
+		this.isBufferungSuspended = false;
+		// force repainting of layer stack to create buffers
+		this.invalidateAll( );
 	};
 	
 	this.startRendering = function( )

@@ -4,12 +4,14 @@
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
 <title>Insert title here</title>
  <script src="http://jquery.com/src/jquery-latest.js"></script>
+ <script src="javascript/jQuery_mousewheel_plugin.js"></script>
  <script src="javascript/a3o.js"></script>
  <script src="javascript/a3oRenderer.js"></script>
  <script type="text/javascript">
  	var tiles = {<?php
 		require_once 'config.php';
 		require_once 'include/classes/Tile.php';
+		require_once 'include/classes/Unit.php';
 
 		try
 		{
@@ -20,6 +22,10 @@
 			die($e->getMessage());
 		}
 
+		$unitTypeFactory = new UnitTypeFactory( $pdo, 1 );
+		$unitType = $unitTypeFactory->getUnitType( 'infantry' );
+		
+		
 		$tileFactory = new TileFactory($pdo, 1);
 		$tileFactory->precacheTiles();
 		$tileFactory->precacheNeighbours();
@@ -49,8 +55,21 @@
 	var beginTranslation = [ 0, 0 ];
 	var tempTranslation = [ 0, 0 ];
 	var translating = false;
+	var zoom = 1.0;
  
    $(document).ready(function(){
+	   	$("#map").mousewheel(function( sender, delta ){
+		   	zoom += delta * 0.25;
+		   	if ( zoom < 0.5 )
+		   	{
+			   	zoom = 0.5;
+		   	}
+		   	else if ( zoom > 1 )
+		   	{
+			   	zoom = 1;
+		   	}
+		   	renderer.setViewportZoom ( zoom );
+	   	}, true );
 		$(document).bind("contextmenu", function(e){
 			return false;
 		});
@@ -82,6 +101,14 @@
 				image.src = '/A3O/images/games/big_world/baseTiles/' + j + '_' + i + '.png';
 			}
 		}
+
+		for ( var tile in tiles )
+		{
+			if ( tiles[tile].owner == 1 )
+			{
+				renderer.layers[0].addDrawable( new Polygon( tiles[tile].vertices, 0, 0, 'black', 'red' ), tile );
+			}
+		}
     	
     	renderer.layers[2].addDrawable( new Polygon( tiles["Afghanistan"].vertices, 0, 0, 'red', 'transparent' ), "mouse_highlighted" );
  	    renderer.startRendering();
@@ -97,6 +124,8 @@
    	   	    	if (!translating)
    	   	    	{
    	    			translating = true;
+   	    			// increase redraw rate by supending layer buffering
+   	    			renderer.suspendBuffering( );
    	   	    		beginTranslation = [ x, y ];
    	   	  			tempTranslation = renderer.viewPortOffset.slice(0);
    	   	    	}
@@ -107,12 +136,14 @@
    	    	if (e.which == 3)
    	    	{
    	    		translating = false;
+   	    		renderer.resumeBuffering( );
    	    		//console.log('mouseup');
    	    	}
 		});
 
 		$('#map').mouseleave( function(e) {
    	    	//console.log('mouseleave');
+   	    	renderer.resumeBuffering( );
     		translating = false;
 
 		});
@@ -190,18 +221,20 @@
 			if (translating)
 			{
 				//console.log('x:\t' + x + '\t\ty:\t' + y); 
-				//console.log('t_x:\t' + tempTranslation[0] + '\t\tt_yy:\t' + tempTranslation[1]); 
-				renderer.viewPortOffset[0] = tempTranslation[0] + (beginTranslation[0] - x);
-				if ( renderer.viewPortOffset[0] < 0 )
+				//console.log('t_x:\t' + tempTranslation[0] + '\t\tt_yy:\t' + tempTranslation[1]);
+				var offset = [ 0, 0 ]; 
+				offset[0] = tempTranslation[0] + (beginTranslation[0] - x);
+				if ( offset[0] < 0 )
 				{
-					renderer.viewPortOffset[0] = 0;
+					offset[0] = 0;
 				}
-				renderer.viewPortOffset[1] = tempTranslation[1] + (beginTranslation[1] - y);
-				if (renderer.viewPortOffset[1] < 0)
+				offset[1] = tempTranslation[1] + (beginTranslation[1] - y);
+				if (offset[1] < 0)
 				{
-					renderer.viewPortOffset[1] = 0;
+					offset[1] = 0;
 				}
-				renderer.layers[0].invalidate();
+
+				renderer.setViewportOffset( offset );
 			}
 
 			x = e.pageX - this.offsetLeft + renderer.viewPortOffset[0];
@@ -249,9 +282,9 @@
 
 		    	if (found != null)
 		    	{
-			    	renderer.layers[2].drawables["mouse_highlighted"].vertices = found.vertices;
+		    		renderer.layers[2].drawables["mouse_highlighted"].vertices = found.vertices;
 			    	renderer.layers[2].drawables["mouse_highlighted"].invalidate();
-		    		var arr = findPath(tiles, lastClick, found.name, 2, 10);
+			    	var arr = findPath(tiles, lastClick, found.name, 2, 10);
 	 	    		if (arr)
 	 	    		{
 		 	    		var centers = new Array( );
@@ -261,7 +294,9 @@
 			  	    		centers.push( tiles[arr[i]].center );
 			  	    		//console.log( tiles[arr[i]].center );
 			  	    	}
-			  	  		renderer.layers[2].addDrawable( new Path( centers, 'red', 10, 'black'), "path");
+			  	    	//centers.pop();
+			  	    	//centers.push( [x,y] );
+			  	    	renderer.layers[2].addDrawable( new Path( centers, 'red', 5, 'black'), "path");
 	  	   			 }
 	  	   			 else
 	  	   			 {
