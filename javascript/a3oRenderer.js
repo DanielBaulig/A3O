@@ -319,7 +319,7 @@ var Renderer = function ( context )
 			var repaint = false;
 			var backgroundBuffer = null;
 			this.context.save();
-			this.context.translate( - this.viewPortOffset[0], - this.viewPortOffset[1] );
+			this.context.translate( -this.viewPortOffset[0], -this.viewPortOffset[1] );
 			this.context.scale( this.viewPortZoom, this.viewPortZoom );
 			for( var i = 0; i < this.layers.length; i++ )
 			{
@@ -364,8 +364,8 @@ var Renderer = function ( context )
 	
 	this.setViewportZoom = function( zoom )
 	{
-		this.viewPortOffset[0] = this.viewPortOffset[0] * ( zoom / this.viewPortZoom );// * this.viewPortZoom;		
-		this.viewPortOffset[1] = this.viewPortOffset[1] * ( zoom / this.viewPortZoom );
+		this.viewPortOffset[0] = Math.floor( this.viewPortOffset[0] * ( zoom / this.viewPortZoom ) );// * this.viewPortZoom;		
+		this.viewPortOffset[1] = Math.floor( this.viewPortOffset[1] * ( zoom / this.viewPortZoom ) );
 		
 		this.viewPortZoom = zoom;
 		
@@ -378,6 +378,11 @@ var Renderer = function ( context )
 		this.viewPortOffset[1] = vector[1];// * this.viewPortZoom;
 		
 		this.invalidateAll( );
+	};
+	
+	this.getWorldCoordinates = function ( x, y )
+	{
+		return [ ( this.context.canvas.offsetLeft + x + this.viewPortOffset[0] ) / this.viewPortZoom, ( this.context.canvas.offsetTop + y + this.viewPortOffset[1] ) / this.viewPortZoom ];
 	};
 	
 	this.invalidateAll = function( )

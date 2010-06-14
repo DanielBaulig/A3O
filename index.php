@@ -22,8 +22,8 @@
 			die($e->getMessage());
 		}
 
-		$unitTypeFactory = new UnitTypeFactory( $pdo, 1 );
-		$unitType = $unitTypeFactory->getUnitType( 'infantry' );
+		//$unitTypeFactory = new UnitTypeFactory( $pdo, 1 );
+		//$unitType = $unitTypeFactory->getUnitType( 'infantry' );
 		
 		
 		$tileFactory = new TileFactory($pdo, 1);
@@ -150,8 +150,9 @@
     	
    	    $('#map').click( function (e) {
    	    	var context = $("#map")[0].getContext('2d');
-   	 		var x = e.pageX - this.offsetLeft + renderer.viewPortOffset[0];
-    		var y = e.pageY - this.offsetTop + renderer.viewPortOffset[1];
+   	    	var coords = renderer.getWorldCoordinates( e.pageX, e.pageY );
+   	 		var x = coords[0];
+    		var y = coords[1];
    	    	
    	    	var candidates = new Array();
    	    	
@@ -237,8 +238,10 @@
 				renderer.setViewportOffset( offset );
 			}
 
-			x = e.pageX - this.offsetLeft + renderer.viewPortOffset[0];
-    		y = e.pageY - this.offsetTop + renderer.viewPortOffset[1];;
+			var coords = renderer.getWorldCoordinates ( e.pageX, e.pageY );
+			
+			x = coords[0];
+    		y = coords[1];;
    	   	 	
    	   	 	if ( pathfindindSuspended )
    	   	 	{
