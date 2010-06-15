@@ -94,14 +94,6 @@ function getAssocArrayLength(tempArray)
    return result;
 }
 
-function drawTiles(context, tiles)
-{
-	for (var name in tiles)
-    {   	    	
-    	drawTile(context, tiles[name]);
-    }
-}
-
 // sadly not suitable for our problem, because there is no relyable heuristic
 // for our unregular formed and sized nodes
 function AStar(tiles, start, end, legal)

@@ -193,21 +193,20 @@ var Path = function ( points, color, lineWidth, shadowColor )
 		var orthogonalVectorLen = Math.sqrt(orthogonalVector[0]*orthogonalVector[0] +  orthogonalVector[1]*orthogonalVector[1]);
 		var orthogonalVectorLength10 = [ orthogonalVector[0] / orthogonalVectorLen * 10, orthogonalVector[1] / orthogonalVectorLen * 10 ];
 		
-		this.mappedTriangleCoords = [ 
-		                       		[
-		                       		 	this.layer.renderer.wrapCoordinatesX ( this.points[this.points.length - 1][0] ) - vectorFromLastPointLength20[0] * 0.3, 
-		                       		 	this.points[this.points.length - 1][1] - vectorFromLastPointLength20[1] * 0.3
-		                       		],
-		                       		[
-		                       		 	vectorFromLastPointLength20[0]*0.7 + orthogonalVectorLength10[0] + this.points[this.points.length - 1][0],  
-		                       		 	vectorFromLastPointLength20[1]*0.7 + orthogonalVectorLength10[1] + this.points[this.points.length - 1][1]
-		                       		],
-		                       		[
-		                       		 	vectorFromLastPointLength20[0]*0.7 - orthogonalVectorLength10[0] + this.points[this.points.length - 1][0],  
-		                       		 	vectorFromLastPointLength20[1]*0.7 - orthogonalVectorLength10[1] + this.points[this.points.length - 1][1]
-		                       		]
-		                      ];
-		this.mappedTriangle.setVertices( this.mappedTriangleCoords.slice() );
+		this.mappedTriangle.setVertices( [ 
+				                       		[
+				                       		 	this.layer.renderer.wrapCoordinatesX ( this.points[this.points.length - 1][0] ) - vectorFromLastPointLength20[0] * 0.3, 
+				                       		 	this.points[this.points.length - 1][1] - vectorFromLastPointLength20[1] * 0.3
+				                       		],
+				                       		[
+				                       		 	vectorFromLastPointLength20[0]*0.7 + orthogonalVectorLength10[0] + this.points[this.points.length - 1][0],  
+				                       		 	vectorFromLastPointLength20[1]*0.7 + orthogonalVectorLength10[1] + this.points[this.points.length - 1][1]
+				                       		],
+				                       		[
+				                       		 	vectorFromLastPointLength20[0]*0.7 - orthogonalVectorLength10[0] + this.points[this.points.length - 1][0],  
+				                       		 	vectorFromLastPointLength20[1]*0.7 - orthogonalVectorLength10[1] + this.points[this.points.length - 1][1]
+				                       		]
+				                       	 ] );
 	};
 	
 	this.setLayer = function( layer )
@@ -579,7 +578,7 @@ var Renderer = function ( context, width, height )
 	
 	this.getWorldCoordinates = function ( x, y )
 	{
-		return [ this.unwrapCoordinatesX ( ( this.context.canvas.offsetLeft + x + this.viewPortOffset[0] ) / this.viewPortZoom ) , ( this.context.canvas.offsetTop + y + this.viewPortOffset[1] ) / this.viewPortZoom ];
+		return [ this.unwrapCoordinatesX ( ( x - this.context.canvas.offsetLeft + this.viewPortOffset[0] ) / this.viewPortZoom ) , ( y - this.context.canvas.offsetTop + this.viewPortOffset[1] ) / this.viewPortZoom ];
 	};                                                                                                                                                                      
 	
 	this.unwrapCoordinatesX = function ( x )
