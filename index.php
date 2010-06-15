@@ -75,7 +75,7 @@
 		});
 	    var context = $("#map")[0].getContext('2d');
 
-	    renderer = new Renderer(context);
+	    renderer = new Renderer(context, 4876, 2278);
 
     	renderer.newLayer( );
     	renderer.newLayer( );
@@ -225,15 +225,7 @@
 				//console.log('t_x:\t' + tempTranslation[0] + '\t\tt_yy:\t' + tempTranslation[1]);
 				var offset = [ 0, 0 ]; 
 				offset[0] = tempTranslation[0] + (beginTranslation[0] - x);
-				if ( offset[0] < 0 )
-				{
-					offset[0] = 0;
-				}
 				offset[1] = tempTranslation[1] + (beginTranslation[1] - y);
-				if (offset[1] < 0)
-				{
-					offset[1] = 0;
-				}
 
 				renderer.setViewportOffset( offset );
 			}
@@ -285,7 +277,7 @@
 
 		    	if (found != null)
 		    	{
-		    		renderer.layers[2].drawables["mouse_highlighted"].vertices = found.vertices;
+		    		renderer.layers[2].drawables["mouse_highlighted"].setVertices = found.vertices;
 			    	renderer.layers[2].drawables["mouse_highlighted"].invalidate();
 			    	var arr = findPath(tiles, lastClick, found.name, 2, 10);
 	 	    		if (arr)
