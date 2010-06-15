@@ -166,7 +166,7 @@
    	    			candidates.push(tiles[name]);
    	    		}
    	    	}
-   	    	console.log(y);
+   	    	
    	    	var found = null;
    	    	
    	    	if(candidates.length == 1)
