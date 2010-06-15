@@ -307,7 +307,12 @@
 </head>
 <body>
 	<div id="result"></div>
+	This is a development version of 'A3O', a browser based Tripple A / Axis & Allies clone. It is for testing only.<br/>
 	<canvas height="625" width="1250" id="map" style="border:solid black;">
-	</canvas>
+		You need HTML5 Canvas to view this webpage. You can get a HTML5 capable browser <a href="http://www.google.com/chrome/">here</a>.
+	</canvas><br />
+	mouswheel: zoom map<br />
+	right mousbutton: pan map<br />
+	left mousebutton: find path<br /> 
 </body>
 </html>
