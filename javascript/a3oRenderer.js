@@ -75,9 +75,12 @@ var Sprite = function( image, x, y )
 	this.image = image;
 	this.render = function( context )
 	{
-		if ( this.layer.renderer.isRectangleVisible( { upperLeft : this.position, lowerRight: [ this.image.width + this.position[0], this.image.height + this.position[1] ] } ) )
+		var renderer = this.layer.renderer;
+		if ( renderer.isRectangleVisible( { upperLeft : this.position, lowerRight: [ this.image.width + this.position[0], this.image.height + this.position[1] ] } ) )
 		{
-			context.drawImage( this.image, this.layer.renderer.wrapCoordinatesX( this.position[0] ), this.position[1] );
+			var wrappedX = this.position[0];
+			wrappedX = ( ( wrappedX + renderer.wrapDistance ) < ( renderer.viewPortOffset[0] / renderer.viewPortZoom ) )  ? wrappedX + renderer.width : ( ( wrappedX - renderer.wrapDistance ) > ( renderer.viewPortOffset[0] + context.canvas.width ) / renderer.viewPortZoom ) ? wrappedX - renderer.width : wrappedX;
+			context.drawImage( this.image, /*this.layer.renderer.wrapCoordinatesX(*/ wrappedX , this.position[1] );
 		}
 	};
 };
@@ -100,7 +103,7 @@ var Sprite = function( image, x, y )
 var Path = function ( points, color, lineWidth, shadowColor )
 {
 	// we can only draw a bezier curve if we have at least 2 points
-	if (points != null && (points.length > 1))
+	if (points && (points.length > 1))
 	{
 		this.points = points;
 		
@@ -127,10 +130,9 @@ var Path = function ( points, color, lineWidth, shadowColor )
 				this.boundingBox.upperLeft[1] = this.points[i][1];
 			}
 		}
-		
 		// unmapped control points - those are not needed atm, so removed by comment
-		/*
-		this.controlpoints = new Array();
+		
+		/*this.controlpoints = new Array();
 		this.controlpoints.push( this.points[0] );
 		for (var i = 1; i < this.points.length - 1; i++)
 		{
@@ -185,8 +187,7 @@ var Path = function ( points, color, lineWidth, shadowColor )
 		                       		 	vectorFromLastPointLength20[0]*0.7 - orthogonalVectorLength10[0] + this.points[this.points.length - 1][0],  
 		                       		 	vectorFromLastPointLength20[1]*0.7 - orthogonalVectorLength10[1] + this.points[this.points.length - 1][1]
 		                       		]
-		                      ];
-		*/
+		                      ];*/
 	}
 	else
 	{
@@ -211,22 +212,35 @@ var Path = function ( points, color, lineWidth, shadowColor )
 	this.buildMappedControlPoints = function ( )
 	{
 		this.mappedControlpoints = [];
+		
+		var wrapXLeft = ( renderer.viewPortOffset[0] / renderer.viewPortZoom ) - renderer.wrapDistance;
+		var wrapXRight = ( renderer.viewPortOffset[0] + renderer.context.canvas.width ) / renderer.viewPortZoom + renderer.wrapDistance;
+		var wrappedX = this.points[0][0];
+		wrappedX = ( wrappedX < wrapXLeft ) ? wrappedX + renderer.width : ( wrappedX > wrapXRight ) ? wrappedX - renderer.width : wrappedX;
+		
 		// first controlpoint equals first anchor point
-		this.mappedControlpoints.push( [ this.layer.renderer.wrapCoordinatesX ( this.points[0][0] ), this.points[0][1] ] );
+		this.mappedControlpoints.push( [ wrappedX, this.points[0][1] ] );
 		for (var i = 1; i < this.points.length - 1; i++)
 		{
 			// see http://www.antigrain.com/research/bezier_interpolation/index.html
 			
+			var a = this.points[i-1].slice();
+			a[0] = ( a[0] < wrapXLeft ) ? a[0] + renderer.width : ( a[0] > wrapXRight ) ? a[0] - renderer.width : a[0];
+			var b = this.points[i].slice();
+			b[0] = ( b[0] < wrapXLeft ) ? b[0] + renderer.width : ( b[0] > wrapXRight ) ? b[0] - renderer.width : b[0];
+			var c = this.points[i+1].slice();
+			c[0] = ( c[0] < wrapXLeft ) ? c[0] + renderer.width : ( c[0] > wrapXRight ) ? c[0] - renderer.width : c[0];
+			
 			// relative vector a -> b
-			var ab = [ this.layer.renderer.wrapCoordinatesX ( this.points[i][0] ) - this.layer.renderer.wrapCoordinatesX ( this.points[i-1][0] ), this.points[i][1] - this.points[i-1][1] ];
+			var ab = [ b[0] - a[0], b[1] - a[1] ];
 			// absolute vecor to middle of a -> b
-			var ab_mid = [ this.layer.renderer.wrapCoordinatesX ( this.points[i-1][0] ) + Math.floor(ab[0] / 2), this.points[i-1][1] + Math.floor(ab[1] / 2) ];
+			var ab_mid = [ a[0] + Math.floor(ab[0] / 2), a[1] + Math.floor(ab[1] / 2) ];
 			// length of a -> b
 			var ab_len = Math.sqrt(ab[0]*ab[0] + ab[1]*ab[1]);
 			// relative vector b -> c
-			var bc = [ this.layer.renderer.wrapCoordinatesX ( this.points[i+1][0] ) - this.layer.renderer.wrapCoordinatesX ( this.points[i][0] ), this.points[i+1][1] - this.points[i][1] ];
+			var bc = [ c[0] - b[0], c[1] - b[1] ];
 			// absolute vector to middle of b -> c
-			var bc_mid = [ this.layer.renderer.wrapCoordinatesX ( this.points[i][0] ) + Math.floor(bc[0] / 2), this.points[i][1] + Math.floor(bc[1] / 2) ];
+			var bc_mid = [ b[0] + Math.floor(bc[0] / 2), b[1] + Math.floor(bc[1] / 2) ];
 			// length of b -> c
 			var bc_len = Math.sqrt( bc[0]*bc[0] + bc[1]*bc[1] );
 			// relative vector from moddle of a -> b to middle of b -> c ( middles vector )
@@ -239,18 +253,20 @@ var Path = function ( points, color, lineWidth, shadowColor )
 			// absolute vector to middle of middles vector
 			var mid_mid = [ Math.floor(ab_mid[0] + ( (ab_mid_bc_mid[0] / ab_mid_bc_mid_len) * ratio * ab_len ) ) , Math.floor(ab_mid[1] + ( ( ab_mid_bc_mid[1] / ab_mid_bc_mid_len ) * ratio * ab_len ) )];
 			// relative vector from middle of middles vector to b
-			var mid_mid_b = [ this.layer.renderer.wrapCoordinatesX ( this.points[i][0] ) - mid_mid[0], this.points[i][1] - mid_mid[1]  ];
+			var mid_mid_b = [ b[0] - mid_mid[0], b[1] - mid_mid[1]  ];
 		
 			this.mappedControlpoints.push( [ab_mid[0] + mid_mid_b[0], ab_mid[1] + mid_mid_b[1]] );
 			this.mappedControlpoints.push( [bc_mid[0] + mid_mid_b[0], bc_mid[1] + mid_mid_b[1]] );
 		}
+		wrappedX = this.points[this.points.length - 1][0];
+		wrappedX = ( wrappedX < wrapXLeft ) ? wrappedX + renderer.width : ( wrappedX > wrapXRight ) ? wrappedX - renderer.width : wrappedX;
 		// last controlpoint equals last anchor point
-		this.mappedControlpoints.push( [ this.layer.renderer.wrapCoordinatesX ( this.points[this.points.length - 1][0] ), this.points[this.points.length - 1][1] ] );
+		this.mappedControlpoints.push( [ wrappedX, this.points[this.points.length - 1][1] ] );
 		
 		// build a triangle pointing in the direction of the last vector to use as a arrow head
 		
 		// vector from last anchor point to second last control point
-		var vectorFromLastPoint = [ this.mappedControlpoints[ this.mappedControlpoints.length-2 ][0] - this.layer.renderer.wrapCoordinatesX ( this.points[ this.points.length-1 ][0] ), this.mappedControlpoints[ this.mappedControlpoints.length-2 ][1] - this.points[ this.points.length-1 ][1] ];
+		var vectorFromLastPoint = [ this.mappedControlpoints[ this.mappedControlpoints.length-2 ][0] - wrappedX, this.mappedControlpoints[ this.mappedControlpoints.length-2 ][1] - this.points[ this.points.length-1 ][1] ];
 		// length of that vector
 		var vectorFromLastPointLen = Math.sqrt(vectorFromLastPoint[0] * vectorFromLastPoint[0] +  vectorFromLastPoint[1] * vectorFromLastPoint[1]);
 		// the vector rescaled to a length of 20
@@ -281,7 +297,7 @@ var Path = function ( points, color, lineWidth, shadowColor )
 		// assign the triangle coordinates to the mappedTriangle polygon
 		this.mappedTriangle.setVertices( [ 
 				                       		[
-				                       		 	this.layer.renderer.wrapCoordinatesX ( this.points[this.points.length - 1][0] ) - vectorFromLastPointLength20[0] * 0.3, 
+				                       		 	wrappedX - vectorFromLastPointLength20[0] * 0.3, 
 				                       		 	this.points[this.points.length - 1][1] - vectorFromLastPointLength20[1] * 0.3
 				                       		],
 				                       		[
@@ -315,62 +331,119 @@ var Path = function ( points, color, lineWidth, shadowColor )
 	 * path points. Normally this should do the trick though.
 	 * 
 	 * @param context The HTML5 2d canvas context to draw to.
-	 * @return true if this method actually draws something, else false
+	 * @return true if this method actually drew something, else false
 	 */
 	this.render = function( context )
 	{
 		if (this.points.length > 1)
 		{
 			context.save();
-			try
-			{
-				context.strokeStyle = color;
-				context.lineWidth = this.lineWidth;
-				context.shadowColor = shadowColor;
-				context.shadowOffsetX = 1;
-				context.shadowOffsetY = 1;
-				context.shadowBlur = 2;
-			
-				// build mapped control points, although it seems pretty intense building this
-				// each time the path is rendered a rebuild is actually neccessary most of the 
-				// time and it takes not close as much time as you might fear. (~ avg 0.2ms on my machine)
-				this.buildMappedControlPoints( );
-				
-				context.beginPath();				
-				context.moveTo( this.layer.renderer.wrapCoordinatesX ( this.points[0][0] ), this.points[0][1] );
-				
-				for (var i = 1; i < this.points.length; i++)
-				{
-					// only draw if the wrapped points lie reasonable close together
-					if ( Math.abs( this.layer.renderer.wrapCoordinatesX ( this.points[i][0] ) - this.layer.renderer.wrapCoordinatesX ( this.points[i-1][0] ) ) < ( this.layer.renderer.context.canvas.width / 2 ) )
-					{
-						context.bezierCurveTo( this.mappedControlpoints[i*2-2][0], this.mappedControlpoints[i*2-2][1], 
-											   this.mappedControlpoints[i*2-1][0], this.mappedControlpoints[i*2-1][1], 
-											   this.layer.renderer.wrapCoordinatesX ( this.points[i][0] ), this.points[i][1]);
-					}
-					// else skip this part of the bezier path to prevent 'crosspathing', that is a path crossing the entire
-					// world map because one end pf the bezier was mapped to the left side and the other to the right
-					// side of the world map
-					else
-					{
-						context.moveTo( this.layer.renderer.wrapCoordinatesX ( this.points[i][0] ), this.points[i][1] );
-					}
-				}
-				context.stroke( );
-				//context.beginPath( );
-				//context.strokeStyle = 'black';
-				//context.fillStyle = 'red';
-				//context.lineWidth = 1.0;
 
-				this.mappedTriangle.render( context );
-			} 
-			finally 
+			context.strokeStyle = color;
+			context.lineWidth = this.lineWidth;
+			context.shadowColor = shadowColor;
+			context.shadowOffsetX = 1;
+			context.shadowOffsetY = 1;
+			context.shadowBlur = 2;
+		
+			// build mapped control points, although it seems pretty intense building this
+			// each time the path is rendered a rebuild is actually neccessary most of the 
+			// time and it takes not close as much time as you might fear. (~ avg 0.2ms on my machine)
+			this.buildMappedControlPoints( );
+			
+			var wrapXLeft = ( renderer.viewPortOffset[0] / renderer.viewPortZoom ) - renderer.wrapDistance;
+			var wrapXRight = ( renderer.viewPortOffset[0] + renderer.context.canvas.width ) / renderer.viewPortZoom + renderer.wrapDistance;
+			var wrappedX = this.points[0][0];
+			wrappedX = ( wrappedX < wrapXLeft ) ? wrappedX + renderer.width : ( wrappedX > wrapXRight ) ? wrappedX - renderer.width : wrappedX;
+			
+			var wrappedX2;
+			
+			context.beginPath();				
+			context.moveTo( wrappedX , this.points[0][1] );
+			
+			for (var i = 1; i < this.points.length; i++)
 			{
-				context.restore();
+				wrappedX = this.points[i][0];
+				wrappedX = ( wrappedX < wrapXLeft ) ? wrappedX + renderer.width : ( wrappedX > wrapXRight ) ? wrappedX - renderer.width : wrappedX;
+				wrappedX2 = this.points[i-1][0];
+				wrappedX2 = ( wrappedX2 < wrapXLeft ) ? wrappedX2 + renderer.width : ( wrappedX2 > wrapXRight ) ? wrappedX2 - renderer.width : wrappedX2;
+									
+				// only draw if the wrapped points lie reasonable close together
+				if ( Math.abs( wrappedX - wrappedX2 ) < ( this.layer.renderer.context.canvas.width / 2 ) )
+				{
+					context.bezierCurveTo( this.mappedControlpoints[i*2-2][0], this.mappedControlpoints[i*2-2][1], 
+										   this.mappedControlpoints[i*2-1][0], this.mappedControlpoints[i*2-1][1], 
+										   wrappedX , this.points[i][1] );
+				}
+				// else skip this part of the bezier path to prevent 'crosspathing', that is a path crossing the entire
+				// world map because one end pf the bezier was mapped to the left side and the other to the right
+				// side of the world map
+				else
+				{
+					context.moveTo( wrappedX , this.points[i][1] );
+				}
 			}
+			context.stroke( );
+
+			this.mappedTriangle.render( context );
+			
+			context.restore();
+				
 			return true;
 		}
 		return false;
+	};
+};
+
+var Text = function ( string, font, x, y, strokeStyle, fillStyle, align, maxWidth )
+{
+	this.super = Drawable;
+	this.super( x,y );
+	this.string = string;
+	this.font = font;
+	if ( align != null )
+	{
+		this.align = align;
+	}
+	else
+	{
+		this.align = 'start';
+	}
+	this.maxWidth = maxWidth;
+	this.strokeStyle = strokeStyle;
+	this.fillStyle = fillStyle;
+	
+	this.getTextWdith = function( context )
+	{
+		context.save( );
+		
+		context.font = this.font;
+		context.textAlign = this.align;
+
+		var result = context.measureText( this.string ).width;
+		context.restore( );
+		return result;
+	};
+	
+	this.render = function( context )
+	{
+		context.save( );
+		
+		context.font = this.font;
+		context.textAlign = this.align;
+		context.strokeStyle = this.strokeStyle;
+		context.fillStyle = this.fillStyle;
+		
+		context.fillText( this.string, this.position[0], this.position[1] );
+		context.strokeText( this.string, this.position[0], this.position[1] );
+		
+		context.restore( );
+	};
+	
+	this.setText = function ( string )
+	{
+		this.string = string;
+		this.invalidate( );
 	};
 };
 
@@ -380,6 +453,7 @@ var Polygon = function( vertices, x, y, strokeStyle, fillStyle, lineWidth )
 	this.setVertices = function( vertices )
 	{
 		this.vertices = vertices;
+		this.boundingBox = { upperLeft : [ Infinity, Infinity ], lowerRight : [ -Infinity, -Infinity ] };
 		
 		if ( vertices != null )
 		{
@@ -422,30 +496,37 @@ var Polygon = function( vertices, x, y, strokeStyle, fillStyle, lineWidth )
 
 	this.render = function( context )
 	{
-		if ( this.vertices != null && this.vertices.length > 0 && this.layer.renderer.isRectangleVisible( this.boundingBox ) )
+		var renderer = this.layer.renderer;
+		if ( this.vertices && this.vertices.length && renderer.isRectangleVisible( this.boundingBox ) )
 		{
 			context.save();
-			try
+
+			context.fillStyle   = this.fillStyle;
+			context.strokeStyle = this.strokeStyle;
+			context.lineWidth   = this.lineWidth;
+			context.beginPath();
+
+			var wrapXLeft = ( renderer.viewPortOffset[0] / renderer.viewPortZoom ) - renderer.wrapDistance;
+			var wrapXRight = ( renderer.viewPortOffset[0] + renderer.context.canvas.width ) / renderer.viewPortZoom + renderer.wrapDistance;
+			var wrappedX = this.vertices[0][0];
+			wrappedX = ( wrappedX < wrapXLeft ) ? wrappedX + renderer.width : ( wrappedX > wrapXRight ) ? wrappedX - renderer.width : wrappedX;
+			
+			context.moveTo( wrappedX , this.vertices[0][1] );
+			
+			var i = this.vertices.length;
+			while ( --i ) 
 			{
-				context.fillStyle   = this.fillStyle;
-				context.strokeStyle = this.strokeStyle;
-				context.lineWidth   = this.lineWidth;
-				context.beginPath();
-	
-				context.moveTo( this.layer.renderer.wrapCoordinatesX ( this.vertices[0][0] ), this.vertices[0][1] );
-				for ( var i = 1; i < this.vertices.length; i++ )
-				{
-					context.lineTo( this.layer.renderer.wrapCoordinatesX ( this.vertices[i][0] ) , this.vertices[i][1] );
-				}
-				
-				context.closePath();
-				context.fill( );
-				context.stroke( );
-			}
-			finally
-			{
-				context.restore( );
-			}
+				wrappedX = this.vertices[i][0];
+				wrappedX = ( wrappedX < wrapXLeft )  ? wrappedX + renderer.width : ( ( wrappedX ) > wrapXRight ) ? wrappedX - renderer.width : wrappedX;
+				context.lineTo( wrappedX  , this.vertices[i][1] );
+			};
+			
+			context.closePath();
+			context.fill( );
+			context.stroke( );
+			
+			context.restore( );
+			
 			return true;
 		};
 		return false;
@@ -485,7 +566,7 @@ function Layer(renderer, index)
 		this.drawables[name] = drawable;
 		drawable.setLayer( this );
 		this.drawablesCount++;
-		this.invalidate();
+		this.invalidate( );
 	};
 	
 	this.removeDrawable = function ( name )
@@ -496,7 +577,7 @@ function Layer(renderer, index)
 			this.drawables[name] = null;
 			delete this.drawables[name];
 			this.drawablesCount--;
-			this.invalidate();
+			this.invalidate( );
 		}
 	};
 	
@@ -510,7 +591,7 @@ function Layer(renderer, index)
 	this.drawables = { };
 }
 
-var Renderer = function ( context, width, height )
+var Renderer = function ( context, width, height, viewport )
 {
 	this.context = context;
 	this.layers = Array();
@@ -521,19 +602,9 @@ var Renderer = function ( context, width, height )
 	this.isBufferungSuspended = false;
 	this.width = width;
 	this.height = height;
+	this.viewport = viewport;
 	
-	this.loopInterval = 50;
-	
-	// TODO: Replace those for direct calls after profiling is done
-	this.putImageData = function(context, backgroundImage)
-	{
-		context.putImageData( backgroundImage, 0, 0 );
-	};
-	
-	this.getImageData = function(context)
-	{
-		return context.getImageData( 0, 0, context.canvas.width, context.canvas.height );
-	};	
+	this.loopInterval = 100;
 	
 	this.newLayer = function( )
 	{
@@ -561,36 +632,33 @@ var Renderer = function ( context, width, height )
 		{
 			var repaint = false;
 			var backgroundBuffer = null;
+			var layerCount;
 			this.context.save();
 			this.context.translate( -this.viewPortOffset[0], -this.viewPortOffset[1] );
 			this.context.scale( this.viewPortZoom, this.viewPortZoom );
-			for( var i = 0; i < this.layers.length; i++ )
+			layerCount = this.layers.length;
+			for( var i = 0; i < layerCount; i++ )
 			{
 				if ( ! repaint && this.layers[i].needsRepaint )
 				{
-					//console.log ('found repaint request on layer ' + i);
 					if ( backgroundBuffer != null )
 					{
-						//console.log('putting image data on layer ' + i);
-						this.putImageData( context, backgroundBuffer );
+						this.context.putImageData( backgroundBuffer, 0, 0 );
 					}
 					else
 					{
-						//console.log('clearing rect, because no background buffer is available on layer ' + i);
 						this.context.clearRect( this.viewPortOffset[0] / this.viewPortZoom, this.viewPortOffset[1] / this.viewPortZoom, this.context.canvas.width / this.viewPortZoom, this.context.canvas.width  / this.viewPortZoom );
 					}
 				}
 				if ( repaint = ( this.layers[i].needsRepaint || repaint ) )
 				{
-					//console.log('rendering image on layer ' + i);
 					// if layer rendered something and it was not the last layer
 					if ( this.layers[i].render( this.context ) && ( i < (this.layers.length - 1) ) )
 					{						
 						// save the new data if buffering isn't suspended
 						if ( ! this.isBufferingSuspended )
 						{
-							//console.log('getting image data on layer ' + i);
-							this.layers[i].currentImageData = this.getImageData( this.context );
+							this.layers[i].currentImageData = this.context.getImageData( 0, 0, this.context.canvas.width, this.context.canvas.height );
 						}
 					}
 					else
@@ -601,6 +669,10 @@ var Renderer = function ( context, width, height )
 				backgroundBuffer = this.layers[i].currentImageData;
 			}
 			this.context.restore( );
+			if ( backgroundBuffer )
+			{
+				this.viewport.putImageData( backgroundBuffer, this.viewPortOffset[0], this.viewPortOffset[1] );
+			}
 			this.needsRepaint = false;
 		}
 	};
@@ -619,7 +691,7 @@ var Renderer = function ( context, width, height )
 	
 	this.setViewportOffset = function( vector )
 	{
-		if ( ( vector[0] + parseInt( this.context.canvas.width ) )  > ( this.width * 1.5 * this.viewPortZoom ) )
+		if ( ( vector[0] + (+this.context.canvas.width ) )  > ( this.width * 1.5 * this.viewPortZoom ) )
 		{
 			this.viewPortOffset[0] = vector[0] - ( this.width * this.viewPortZoom );
 		}
@@ -636,21 +708,21 @@ var Renderer = function ( context, width, height )
 		{
 			this.viewPortOffset[1] = 0;
 		} 
-		else if ( vector[1] > ( this.height * this.viewPortZoom ) - ( this.context.canvas.height ) )
+		else if ( vector[1] > ( this.height * this.viewPortZoom ) - (+this.context.canvas.height ) )
 		{
-			this.viewPortOffset[1] = ( this.height * this.viewPortZoom ) - this.context.canvas.height;
+			this.viewPortOffset[1] = ( this.height * this.viewPortZoom ) - (+this.context.canvas.height);
 		}
 		else
 		{
 			this.viewPortOffset[1] = vector[1];
 		}
-		 //console.log(vector[1]);
 		this.invalidateAll( );
 	};
 	
 	this.getWorldCoordinates = function ( x, y )
 	{
-		return [ this.unwrapCoordinatesX ( ( x - this.context.canvas.offsetLeft + this.viewPortOffset[0] ) / this.viewPortZoom ) , ( y - this.context.canvas.offsetTop + this.viewPortOffset[1] ) / this.viewPortZoom ];
+		//x = ( ( x + this.wrapDistance ) < ( this.viewPortOffset[0] / this.viewPortZoom ) ) ? x + this.width : ( ( x - this.wrapDistance ) > ( this.viewPortOffset[0] + this.context.canvas.width ) / this.viewPortZoom ) ? x - this.width : x;
+		return [ this.unwrapCoordinatesX( ( x - this.context.canvas.offsetLeft + this.viewPortOffset[0] ) / this.viewPortZoom ), ( y - this.context.canvas.offsetTop + this.viewPortOffset[1] ) / this.viewPortZoom ];
 	};                                                                                                                                                                      
 	
 	this.unwrapCoordinatesX = function ( x )
@@ -669,24 +741,32 @@ var Renderer = function ( context, width, height )
 		}
 	};
 	
-	this.wrapCoordinatesX = function ( x )
-	{
-		//console.log('distance ' + wrapDistance);
-		if ( ( x + this.wrapDistance ) < ( this.viewPortOffset[0] / this.viewPortZoom ) )
+	// This used to be a method but was "inlined" for performance reasons.
+	// Unfortunately Javascript function calls are tremendously slow in some implementations (eg Firefox).
+	// While panning the viewport this function was called up to 1 million times within a short timeframe
+	// which brought Firefox' Javascript implementation to it's knees. While this worked fine in Chrome it
+	// absolutely killed Firefox. 
+	// Since there is no way to write macros or inline function in Javascript I moved the logic of the
+	// function to each place it was called to save the actual function call. This turned out to be a
+	// significant performance boost in Firefox.
+	// I might fix this by using PHP as a macro replacement and do something like JS_wrapCoordinatesX( $x )
+	// which will echo the appropriate Javascript logic to reduce code redundancy.
+	//this.wrapCoordinatesX = function ( x )
+	//{
+		/*if ( ( x + this.wrapDistance ) < ( this.viewPortOffset[0] / this.viewPortZoom ) ) 
 		{
 			return x + this.width;
-		}
+		} 
 		else if ( ( x - this.wrapDistance ) > ( this.viewPortOffset[0] + this.context.canvas.width ) / this.viewPortZoom )
 		{
-			//console.log('wrapping right');
 			return x - this.width;
-		}
-		else
+		} 
+		else 
 		{
-			//console.log('did not wrap');
 			return x;
-		}
-	};
+		}*/
+		//return ( ( x + this.wrapDistance ) < ( this.viewPortOffset[0] / this.viewPortZoom ) )  ? x + this.width : ( ( x - this.wrapDistance ) > ( this.viewPortOffset[0] + this.context.canvas.width ) / this.viewPortZoom ) ? x - this.width : x;
+	//};
 	
 	this.invalidateAll = function( )
 	{
@@ -695,14 +775,21 @@ var Renderer = function ( context, width, height )
 			this.layers[0].invalidate( );
 		}
 	};
-	
-	// TODO: currently this only checks in heroizontal coords if a rectangle is visible
-	// because I do not clip any objects in vertical direcion and I can save some cpu
-	// usage by not checking on vertical direction. This is subject to change though.
+
 	this.isRectangleVisible = function( rect )
 	{
-		return this.wrapCoordinatesX ( rect.upperLeft[0] ) > this.viewPortOffset[0] / this.viewPortZoom && this.wrapCoordinatesX ( rect.upperLeft[0] ) < ( this.viewPortOffset[0]  + parseInt(this.context.canvas.width) ) / this.viewPortZoom
-			|| this.wrapCoordinatesX ( rect.lowerRight[0] ) > this.viewPortOffset[0] / this.viewPortZoom && this.wrapCoordinatesX ( rect.lowerRight[0] ) < ( this.viewPortOffset[0] + parseInt(this.context.canvas.width) ) / this.viewPortZoom;
+		var wrappedUL = rect.upperLeft[0];
+		wrappedUL = ( ( wrappedUL + this.wrapDistance ) < ( this.viewPortOffset[0] / this.viewPortZoom ) )  ? wrappedUL + this.width : ( ( wrappedUL - this.wrapDistance ) > ( this.viewPortOffset[0] + this.context.canvas.width ) / this.viewPortZoom ) ? wrappedUL - this.width : wrappedUL;
+		var wrappedLR = rect.lowerRight[0];
+		wrappedLR = ( ( wrappedLR + this.wrapDistance ) < ( this.viewPortOffset[0] / this.viewPortZoom ) )  ? wrappedLR + this.width : ( ( wrappedLR - this.wrapDistance ) > ( this.viewPortOffset[0] + this.context.canvas.width ) / this.viewPortZoom ) ? wrappedLR - this.width : wrappedLR;
+		var canvasWidth = (+this.context.canvas.width);
+		var canvasHeight = (+this.context.canvas.height);
+		return ( wrappedUL > this.viewPortOffset[0] / this.viewPortZoom && wrappedUL < ( this.viewPortOffset[0]  + canvasWidth ) / this.viewPortZoom
+			|| wrappedLR > this.viewPortOffset[0] / this.viewPortZoom && wrappedLR < ( this.viewPortOffset[0] + canvasWidth ) / this.viewPortZoom 
+			|| wrappedUL <= this.viewPortOffset[0] / this.viewPortZoom && wrappedLR >= ( this.viewPortOffset[0] + canvasWidth ) / this.viewPortZoom )
+			&& ( ( rect.upperLeft[1] > ( this.viewPortOffset[1] / this.viewPortZoom ) && rect.upperLeft[1] < ( ( this.viewPortOffset[1]) + canvasHeight ) / this.viewPortZoom )
+			|| ( rect.lowerRight[1] > ( this.viewPortOffset[1] / this.viewPortZoom ) && rect.lowerRight[1] < ( ( this.viewPortOffset[1]) + canvasHeight ) / this.viewPortZoom ) 
+			|| rect.upperLeft[1] <= ( this.viewPortOffset[1] / this.viewPortZoom ) && rect.lowerRight[1] >= ( ( this.viewPortOffset[1]) + canvasHeight ) / this.viewPortZoom ) ;
 	};
 	
 	this.invalidate = function( )

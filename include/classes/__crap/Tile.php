@@ -7,110 +7,52 @@ define('TABLE_TILE_VERTICES', 'tile_vertices');
 define('TABLE_BASETILES', 'base_tiles');
 define('TABLE_TILE_CONNECTIONS', 'tile_connections');
 
-//TODO: move prepared statements and pdo reference to class members and intlize using class method 'initialize' or smth
+require_once 'ObjectRelationalMapping.php';
+require_once 'Registry.php';
+
 //TODO: introduce tile_vertex_json_cache_timestamp on base_tiles and vertex_timestamp on tile_vertices to recognize changes
   
-
-
-//TODO: Refactor Base Class DatabaseFactory or similar ?
-class TileFactory
+class BaseTileFactory implements IFactory
 {
-	private $m_pdo;
-	private $m_game;
-	private $m_tileCache;
+	public function createProduct( PDOStatement $statement = NULL )
+	{
+		return BaseTile::buildFromStatement( $statement );
+	}
+}
+
+class BaseTileRegistry extends BaseRegistry
+{
+	private $m_tileCache = NULL;
 	private $m_tilesPrecached = false;
 	
 	private $m_loadSingleTilePdoStatement;
 	private $m_loadAllTilesPdoStatement;
 	private $m_loadAllNeighboursPdoStatement;
 	
-	public function __construct(PDO $pdo, $game, $match = NULL)
+	public function __construct( PDO $pdo, $game )
 	{
-		$this->m_pdo = $pdo;
-		$this->m_game = $game;
-		$this->tileCache = array();
-		if ($match === NULL)
-		{
-			try
-			{
-				$this->m_loadSingleTilePdoStatement = $this->m_pdo->prepare('SELECT * FROM ' . TABLE_BASETILES . ' WHERE tile_name LIKE :name AND tile_gamd_id = :game_id LIMIT 1');
-				$this->m_loadSingleTilePdoStatement->bindParam(':game_id', $this->m_game, PDO::PARAM_INT);
-			
-				$this->m_loadAllTilesPdoStatement = $this->m_pdo->prepare('SELECT * FROM ' . TABLE_BASETILES . ' WHERE tile_game_id = :game_id');
-				$this->m_loadAllTilesPdoStatement->bindParam(':game_id', $this->m_game, PDO::PARAM_INT);
-				
-				$this->m_loadAllNeighboursPdoStatement = $this->m_pdo->prepare('SELECT f.tile_name AS first_tile_name, s.tile_name AS second_tile_name FROM ' . TABLE_TILE_CONNECTIONS . ' AS tc INNER JOIN ' . TABLE_BASETILES . ' AS f ON tc.tile_connection_first_tile_id = f.tile_id INNER JOIN ' . TABLE_BASETILES . ' AS s ON tc.tile_connection_second_tile_id = s.tile_id');
-			}
-			catch (PDOException $e)
-			{
-				die($e->getMessage());
-			}
-		}
-		else
-		{
-			// get match specific tile statement
-		}
-	}
-	
-	public function getTile($name, $forceReload = false)
-	{
-		if (!$forceReload && array_key_exists($name, $this->m_tileCache))
-		{
-			return $this->m_tileCache[$name];
-		}
-		else
-		{
-			try
-			{
-				$this->m_loadSingleTilePdoStatement->bindValue(':name', $name, PDO::PARAM_STR);
-				$this->m_loadSingleTilePdoStatement->execute();
-			
-				
-				if ($this->m_loadSingleTilePdoStatement->rowCount() != 1)
-				{
-					$this->m_loadSingleTilePdoStatement->closeCursor();
-					return $this->m_tileCache[$name] = NULL;
-				}
-				else
-				{
-					return $this->m_tileCache[$name] = new Tile($this->m_pdo, $this->m_loadSingleTilePdoStatement->fetch(PDO::FETCH_ASSOC));
-				}
-			}
-			catch(PDOException $e)
-			{
-				die($e->getMessage());
-			}
-		}
-	}
-	
-	public function &getAllTiles($forceReload = false)
-	{
-		if (! $this->m_tilesPrecached || $forceReload)
-		{
-			$this->precacheTiles();
-		}
-		return $this->m_tileCache;
-	}
-	
-	public function precacheTiles()
-	{
-		$this->m_tilesPrecached = false;
-		$this->m_tileCache = array();
+		parent::__construct( $pdo, $game, new BaseTileFactory( ) );
 		
-		try
-		{
-			$this->m_loadAllTilesPdoStatement->execute();
-			while($row = $this->m_loadAllTilesPdoStatement->fetch(PDO::FETCH_ASSOC))
-			{
-				$this->m_tileCache[$row['tile_name']] = new Tile($this->m_pdo, $row);
-			}
-			$this->m_loadAllTilesPdoStatement->closeCursor();
-			$this->m_tilesPrecached = true;
-		}
-		catch(PDOException $e)
-		{
-			die($e->getMessage());
-		}
+		$ormMapping = & BaseTile::getOrmMapping( ); 
+		$ormMapping['m_id'] = array ( 'name' => 'tile_id', 'type' => PDO::PARAM_INT );
+		$ormMapping['m_water'] = array ( 'name' => 'tile_type', 'type' => PDO::PARAM_INT );
+		$ormMapping['m_name'] = array ( 'name' => 'tile_name', 'type' => PDO::PARAM_STR );
+		$ormMapping['m_production'] = array ( 'name' => 'tile_production', 'type' => PDO::PARAM_INT );
+		$ormMapping['m_centerX'] = array ( 'name' => 'tile_center_x', 'type' => PDO::PARAM_INT );
+		$ormMapping['m_centerY'] = array ( 'name' => 'tile_center_y', 'type' => PDO::PARAM_INT );
+		$ormMapping['m_verticesJsonCache'] = array ( 'name' => 'tile_vertices_json_cache', 'type' => PDO::PARAM_INT );
+		
+		$columns = BaseTile::buildColumnList( );
+		
+		$this->m_loadSingleElementByIdStatement = $this->m_pdo->prepare( 'SELECT ' . $columns . ' FROM ' . TABLE_BASETILES . ' WHERE tile_id = :id LIMIT 1' );
+		
+		$this->m_loadSingleTilePdoStatement = $this->m_pdo->prepare('SELECT ' . $columns . ' FROM ' . TABLE_BASETILES . ' WHERE tile_name LIKE :name AND tile_gamd_id = :game_id LIMIT 1');
+		$this->m_loadSingleTilePdoStatement->bindParam(':game_id', $this->m_game, PDO::PARAM_INT);
+	
+		$this->m_loadAllElementsPdoStatement = $this->m_pdo->prepare('SELECT ' . $columns . ' FROM ' . TABLE_BASETILES . ' WHERE tile_game_id = :game_id');
+		$this->m_loadAllElementsPdoStatement->bindParam(':game_id', $this->m_game, PDO::PARAM_INT);
+		
+		$this->m_loadAllNeighboursPdoStatement = $this->m_pdo->prepare('SELECT f.tile_name AS first_tile_name, s.tile_name AS second_tile_name FROM ' . TABLE_TILE_CONNECTIONS . ' AS tc INNER JOIN ' . TABLE_BASETILES . ' AS f ON tc.tile_connection_first_tile_id = f.tile_id INNER JOIN ' . TABLE_BASETILES . ' AS s ON tc.tile_connection_second_tile_id = s.tile_id');
 	}
 	
 	public function precacheNeighbours()
@@ -134,6 +76,182 @@ class TileFactory
 	}
 }
 
+class Vertex extends ObjectRelationalMapping
+{
+	public static function & getOrmMapping( )
+	{
+		if ( self::$ormMapping === NULL)
+		{
+			self::$ormMapping = array 
+			(
+				'm_id' => NULL,
+				'm_tile_id' => NULL,
+				'm_x' => NULL,
+				'm_y' => NULL
+			);
+		}
+		return UnitType::$ormMapping;
+	}
+	
+	public static function buildFromStatement( PDOStatement $statement )
+	{
+		$instance = new self( );
+		$instance->bindColumns( $statement );
+		if ( $statement->fetch( PDO::FETCH_BOUND ) )
+		{
+			return $instance;
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	public function getId( )
+	{
+		return $this->m_id;
+	}
+}
+
+class Connection extends ObjectRelationalMapping
+{
+	public static function & getOrmMapping( )
+	{
+		if ( self::$ormMapping === NULL)
+		{
+			self::$ormMapping = array 
+			(
+				'm_first_tile' => NULL,
+				'm_second_tile' => NULL
+			);
+		}
+		return UnitType::$ormMapping;
+	}
+	
+	public static function buildFromStatement( ) 
+	{
+		$instance = new self( );
+		$instance->bindColumns( $statement );
+		if ( $statement->fetch( PDO::FETCH_BOUND ) )
+		{
+			return $instance;
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	
+	public function __construct( )
+	{		
+	}
+	
+	public function isConnecting( BaseTile $first, BaseTile $second )
+	{
+		return $this->connectsFrom( $first ) && $this->connectsTo( $second );
+	}
+	
+	public function connectsFrom( BaseTile $from )
+	{
+		return $this->m_first_tile == $from->getId( );
+	}
+	
+	public function connectsTo( BaseTile $to )
+	{
+		return $this->m_second_tile == $to->getId( );
+	}
+	
+	public function getId( )
+	{
+		return $this->m_first_tile . '->' .  $this->m_second_tile;
+	}
+	
+	protected $m_first_tile;
+	protected $m_second_tile;
+}
+
+class BaseTile extends ObjectRelationalMapping
+{
+	private static $ormMapping = NULL;
+	public static function & getOrmMapping( )
+	{
+		if ( self::$ormMapping === NULL)
+		{
+			self::$ormMapping = array 
+			(
+				'm_id' => NULL,
+				'm_name' => NULL,
+				'm_controllingNation' => NULL,
+				'm_production' => NULL,
+				'm_water' => NULL,
+				'm_centerX' => NULL,
+				'm_centerY' => NULL,
+				'm_verticesJsonCache' => NULL
+			);
+		}
+		return UnitType::$ormMapping;
+	}
+	
+	public function __construct( )
+	{
+	}
+	
+	public static function buildFromStatement( PDOStatement $statement )
+	{
+		$instance = new self( );
+		$instance->bindColumns( $statement );
+		if ( $statement->fetch( PDO::FETCH_BOUND ) )
+		{
+			return $instance;
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+		
+	public function fetchVertices( PDOStatement $statement )
+	{
+		$this->m_vertices = array( );
+		while ( $vertex = Vertex::buildFromStatement( $statement ) )
+		{
+			$this->m_vertices[] = $vertex;
+		}
+	}
+	
+	public function fetchConnections( PDOStatement $statement )
+	{
+		$this->m_connections = array( );
+		while ( $connection = Vertex::buildFromStatement( $statement ) )
+		{
+			$this->m_connections[] = $connection;
+		}
+	}
+	
+	private function hasConnectionTo( BaseTile $tile )
+	{
+		return $this->m_connections[$tile->getId( )]->connectsTo( $tile );	
+	}	
+	public function isConnectedTo( BaseTile $tile )
+	{
+		return $this->hasConnectionTo( $tile ) || $tile->hasConnectionTo( $this );
+	}
+	
+	protected $m_id;
+	protected $m_name;
+	protected $m_production;
+	protected $m_water;
+	protected $m_centerX;
+	protected $m_centerY;
+	protected $m_verticesJsonCache;
+	protected $m_connections = array( );
+	protected $m_vertices = array( );	
+	
+	public function getId( )
+	{
+		return $m_id;	
+	}
+}
+
 class Tile
 {
 	protected $m_pdo;
@@ -141,12 +259,13 @@ class Tile
 	//////////////////////////
 	//  Logical Attributes  //
 	//////////////////////////
+	private $m_name = NULL;
+	
 	/** Array of neighbouring tiles
 	 * 
 	 * @var array
 	 */	
 	private $m_neighbours = NULL;
-	private $m_loadNeighboursPdoStatement = NULL;
 	
 	/** Production poitns generated by this tile
 	 * 
@@ -158,18 +277,17 @@ class Tile
 	 * 
 	 * @var Nation
 	 */
-	private $m_controller = NULL;
+	private $m_owner = NULL;
 	
-	/** Type of th tile (sea or land)
+	/** Is this a water tile?
 	 * 
-	 * @var TILE_TYPE_LAND or TILE_TYPE_SEA
+	 * @var Boolean
 	 */
-	private $m_type = NULL;
+	private $m_water = NULL;
 	
 	///////////////////////////
 	// Structural Attributes //
 	///////////////////////////
-	private $m_name = NULL;
 	/** The tile polygon's center vertex
 	 * 
 	 * @var array of int
@@ -202,24 +320,24 @@ class Tile
 	// Methods and Functions //
 	///////////////////////////
 	
-	public function getCenterX()
+	public function getCenterX( )
 	{
 		return $this->m_center[0];
 	}
 	
-	public function getCenterY()
+	public function getCenterY( )
 	{
 		return $this->m_center[1];
 	}
 	
-	public function getType()
+	public function isWater( )
 	{
-		return $this->m_type;
+		return $this->m_water;
 	}
 	
-	public function getController()
+	public function getOwner( )
 	{
-		return $this->m_controller;
+		return $this->m_owner;
 	}
 	
 	public function getName()
@@ -247,7 +365,7 @@ class Tile
 		}
 		if (array_key_exists('tile_startowner_id', $assoc_row))
 		{
-			$this->m_controller = $assoc_row['tile_startowner_id'];
+			$this->m_owner = $assoc_row['tile_startowner_id'];
 		}
 		if (array_key_exists('tile_center_x', $assoc_row) && array_key_exists('tile_center_y', $assoc_row))
 		{
@@ -297,17 +415,6 @@ class Tile
 		{
 			die($e->getMessage());
 		}
-	}
-	
-	/** Calculates the path to another tile using A*
-	 * 
-	 * @param Tile $other
-	 * @returns array of Tile
-	 */
-	public function &pathTo(Tile $other)
-	{
-		// do A*
-		return $other;
 	}
 	
 	protected function buildVerticesJSONCache()
@@ -374,7 +481,7 @@ class Tile
 	public function getTileAsJson()
 	{		
 		return '{"name":"' . $this->m_name . '"' .
-				',"owner":' . ( $this->getController() ? $this->getController() : 0 ) . 
+				',"owner":' . ( $this->getOwner( ) ? $this->getOwner( ) : 0 ) . 
 				',"vertices":' . $this->getVerticesAsJson() .		
 				',"center":' . $this->getCenterAsJson() .
 				',"type":' . $this->m_type .

@@ -7,6 +7,11 @@ define('AJAX_SECURITY_SETTINGS_INPUTTYPE', 0);
 define('AJAX_SECURITY_SETTINGS_FILTER', 1);
 define('AJAX_SECURITY_SETTINGS_FILTEROPTIONS', 2);
 
+interface JSON 
+{
+	public function toJSON( );	
+}
+
 class AjaxSecurity
 {
 	/** 

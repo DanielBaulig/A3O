@@ -9,27 +9,35 @@
  <script src="javascript/a3oRenderer.js"></script>
  <script type="text/javascript">
  	var tiles = {<?php
-		require_once 'config.php';
-		require_once 'include/classes/Tile.php';
-		require_once 'include/classes/Unit.php';
-
+ 		require_once 'config.php';
+ 			
 		try
 		{
-			$pdo = new PDO('mysql:host=' . $sql_host . ';dbname='. $sql_database, $sql_username, $sql_password);
+			$pdo = new PDO('mysql:host=' . $sql_host . ';dbname='. $sql_database, $sql_username, $sql_password );
 		}
 		catch (PDOException $e)
 		{
 			die($e->getMessage());
 		}
+		if ( ! $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION) || $pdo->getAttribute(PDO::ATTR_ERRMODE) != PDO::ERRMODE_EXCEPTION)
+		{
+			die ('Error Mode change failed!');
+		}
 
-		//$unitTypeFactory = new UnitTypeFactory( $pdo, 1 );
-		//$unitType = $unitTypeFactory->getUnitType( 'infantry' );
+		//$pdo->query('lol');
 		
+		require_once 'include/classes/Tile.php';
+		require_once 'include/classes/Unit.php';
 		
-		$tileFactory = new TileFactory($pdo, 1);
-		$tileFactory->precacheTiles();
-		$tileFactory->precacheNeighbours();
-		$tiles = $tileFactory->getAllTiles();
+		//die ('lol ' . ($pdo->getAttribute( PDO::ATTR_ERRMODE ) == PDO::ERRMODE_EXCEPTION));
+
+		$unitTypeRegistry = new UnitTypeRegistry( $pdo, 1 );
+		$unitType = $unitTypeRegistry->getElement( 2 );
+		
+		$tileFactory = new BaseTileRegistry( $pdo, 1 );
+		$tileFactory->precacheElements();
+		//$tileFactory->precacheNeighbours();
+		$tiles = $tileFactory->getAllElements();
 
 		$first = true;
 
@@ -56,6 +64,7 @@
 	var tempTranslation = [ 0, 0 ];
 	var translating = false;
 	var zoom = 1.0;
+	var FPSDrawable = null;
  
    $(document).ready(function(){
 	   	$("#map").mousewheel(function( sender, delta ){
@@ -80,10 +89,6 @@
     	renderer.newLayer( );
     	renderer.newLayer( );
     	renderer.newLayer( );
-    	/*for (tile in tiles)
-    	{
-    		renderer.layers[0].addDrawable( new Polygon( tiles[tile].vertices, 0, 0, 'black', 'white' ), "tile_" + tile );
-    	}*/
 
 		var image;
     	
@@ -102,16 +107,53 @@
 			}
 		}
 
+		/*var sum = 0;
+		var clearedSum = 0;
+		for ( var tile in tiles ) 
+		{
+			var oldl = tiles[tile].vertices.length;
+			tiles[tile].vertices = DouglasPecker ( tiles[tile].vertices, 0 );
+			var newl = tiles[tile].vertices.length;
+			sum = sum + oldl;
+			clearedSum = clearedSum + oldl - newl;
+		}
+		alert ( clearedSum/sum );*/
+		
 		for ( var tile in tiles )
 		{
+			if ( tiles[tile].owner == 0 )
+			{
+				renderer.layers[0].addDrawable( new Polygon( tiles[tile].vertices, 0, 0, 'black', 'orange' ), tile );
+			}
 			if ( tiles[tile].owner == 1 )
 			{
 				renderer.layers[0].addDrawable( new Polygon( tiles[tile].vertices, 0, 0, 'black', 'red' ), tile );
 			}
+			if ( tiles[tile].owner == 2 )
+			{
+				renderer.layers[0].addDrawable( new Polygon( tiles[tile].vertices, 0, 0, 'black', 'grey' ), tile );
+			}
+			if ( tiles[tile].owner == 3 )
+			{
+				renderer.layers[0].addDrawable( new Polygon( tiles[tile].vertices, 0, 0, 'black', 'yellow' ), tile );
+			}
+			if ( tiles[tile].owner == 4 )
+			{
+				renderer.layers[0].addDrawable( new Polygon( tiles[tile].vertices, 0, 0, 'black', 'green' ), tile );
+			}
+			if ( tiles[tile].owner == 5 )
+			{
+				renderer.layers[0].addDrawable( new Polygon( tiles[tile].vertices, 0, 0, 'black', 'tan' ), tile );
+			}
+			if ( tiles[tile].owner == 6 )
+			{
+				renderer.layers[0].addDrawable( new Polygon( tiles[tile].vertices, 0, 0, 'black', 'purple' ), tile );
+			}
 		}
     	
-    	renderer.layers[2].addDrawable( new Polygon( tiles["Afghanistan"].vertices, 0, 0, 'red', 'transparent' ), "mouse_highlighted" );
- 	    renderer.startRendering();
+    	renderer.layers[2].addDrawable( new Polygon( null, 0, 0, 'red', 'transparent' ), "mouse_highlighted" );
+    	//renderer.layers[2].addDrawable( FPSDrawable = new Text( 'fps: ', 'italic 400 24px/2 Unknown Font, sans-serif', 50, 50, 'red', 'black' ), "fps" );
+ 	    renderer.startRendering( );
     	
     	cleanImage = context.getImageData(0, 0, $("#map")[0].width, $("#map")[0].height);
 
@@ -124,6 +166,9 @@
    	   	    	if (!translating)
    	   	    	{
    	    			translating = true;
+
+   	    			document.body.style.cursor='move';
+   	    			
    	    			// increase redraw rate by supending layer buffering
    	    			renderer.suspendBuffering( );
    	   	    		beginTranslation = [ x, y ];
@@ -136,6 +181,9 @@
    	    	if (e.which == 3)
    	    	{
    	    		translating = false;
+
+   	    		document.body.style.cursor='default';
+   	    		
    	    		renderer.resumeBuffering( );
    	    		//console.log('mouseup');
    	    	}
@@ -143,6 +191,9 @@
 
 		$('#map').mouseleave( function(e) {
    	    	//console.log('mouseleave');
+   	    	
+   	    	document.body.style.cursor='default';
+   	    	
    	    	renderer.resumeBuffering( );
     		translating = false;
 
@@ -277,8 +328,8 @@
 
 		    	if (found != null)
 		    	{
-		    		renderer.layers[2].drawables["mouse_highlighted"].setVertices = found.vertices;
-			    	renderer.layers[2].drawables["mouse_highlighted"].invalidate();
+		    		renderer.layers[2].drawables["mouse_highlighted"].setVertices ( found.vertices );
+			    	//renderer.layers[2].drawables["mouse_highlighted"].invalidate();
 			    	var arr = findPath(tiles, lastClick, found.name, 2, 10);
 	 	    		if (arr)
 	 	    		{
@@ -306,7 +357,7 @@
 
 </head>
 <body>
-	<div id="result"></div>
+	<div id="result"><?php print_r( $unitType ); ?></div>
 	This is a development version of 'A3O', a browser based Tripple A / Axis & Allies clone. It is for testing only.<br/>
 	<canvas height="625" width="1250" id="map" style="border:solid black;">
 		You need HTML5 Canvas to view this webpage. You can get a HTML5 capable browser <a href="http://www.google.com/chrome/">here</a>.
@@ -314,5 +365,7 @@
 	mouswheel: zoom map<br />
 	right mousbutton: pan map<br />
 	left mousebutton: find path<br /> 
+	All assets and static ressources found on this webpage are not part of this project but originate from the TripleA project and are licenced under GNU GPL.<br /> 
+	Please refer to <a href="http://triplea.sourceforge.net">http://triplea.sourceforge.net<a/> for more information on the TripleA project. 
 </body>
 </html>

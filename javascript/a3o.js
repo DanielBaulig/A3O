@@ -84,6 +84,94 @@ function isPointInPolygon(vertices, x, y)
   return c;
 }
 
+function distanceLineToVertex( lineStart, lineEnd, vertex )
+{
+	// build direction vector of line
+	var directionVector = [ lineEnd[0] - lineStart[0], lineEnd[1] - lineStart[1] ];
+	// calculate length of that vector and use it to normalize the direction vector to a length of 1
+	var directionVectorLength = Math.sqrt( directionVector[0] * directionVector[0] + directionVector[1] * directionVector[1] );
+	directionVector[0] = directionVector[0] / directionVectorLength;
+	directionVector[1] = directionVector[1] / directionVectorLength;
+	
+	// calculate a any (eg start vector) point on the line to the vertex
+	var vectorStartToVertex = [ vertex[0] - lineStart[0], vertex[1] - lineStart[1] ];
+
+	// square root of cross product of vector from point on line to vertex and normalized direction vector is the distance 
+	return Math.sqrt( ( ( vectorStartToVertex[0] - directionVector[1] ) + ( vectorStartToVertex[1] - directionVector[0] ) ) * ( ( vectorStartToVertex[0] - directionVector[1] ) + ( vectorStartToVertex[1] - directionVector[0] ) ) );
+}
+
+function DouglasPecker( vertices, epsilon )
+{
+	var furthest, furthestDistance, distance, left, right, i, stack, clearedVertices;
+	
+	stack = [];
+	clearedVertices = vertices.slice();
+	left = 0;
+	right = vertices.length - 1;
+	do
+	{
+		if ( left + 1 < right )
+		{
+			furthest = right;
+			furthestDistance = 0;
+			// get furthest vertex from the line from left to right vertex on polygon strip
+			for ( i = left + 1; i < right; i++ )
+			{
+				if ( furthestDistance < ( distance = distanceLineToVertex( vertices[left], vertices[right], vertices[i] ) ) )
+				{
+					furthestDistance = distance;
+					furthest = i;
+				}
+			}
+			
+			// near enough, do not traverse deeper
+			if ( furthestDistance <= epsilon )
+			{
+				// mark all vertices between those as not used
+				for ( i = left + 1; i < right; i++ )
+				{
+					clearedVertices[i] = false;
+				}
+				left = right;
+				
+			}
+			else
+			{
+				// save current right, to search right of furthest later
+				stack.push( right );
+				// go left of furthest and continue search
+				right = furthest;
+			}
+			continue;
+		}
+		else
+		{
+			// no searches for right side left
+			if ( ! ( stack.length > 0 ) )
+			{
+				break;
+			}
+			// search right path
+			left = right;
+			right = stack.pop( );
+		}
+		
+	} while ( true );	
+	i = 0;
+	while ( i < clearedVertices.length )
+	{
+		if ( clearedVertices[i]  == false )
+		{
+			clearedVertices.splice( i, 1 );
+		}
+		else
+		{
+			i++;
+		}
+	}		
+	return clearedVertices;
+}
+
 function getAssocArrayLength(tempArray) 
 {
    var result = 0;
@@ -202,10 +290,10 @@ function AStar(tiles, start, end, legal)
  * 
  * Since heuristic is not possible and each edge in our graph has a fixed weight 
  * of 1 we are stuck with brute forcing our path. The algorithm will traverse possible
- * paths in level of delpth steps, starting at 0 and iterating deeper into the field. Tiles
+ * paths in level of depth steps, starting at 0 and iterating deeper into the field. Tiles
  * that where already visited in a lower level of depth are skipped and not checked again.
  * This will produce the shortest path to end from start. It may however take long because
- * there is no logic to speed things up.
+ * there is no logic to speed things up.  <- it doesn't. complexity is relatively low.
  * 
  * @param tiles
  * @param start
@@ -258,7 +346,7 @@ function findPath(tiles, start, end, legal, max_lod)
 				{
 					result.push(current);
 					current = search_graph[lod][current];
-				} while(lod--)
+				} while(lod--);
 				result.reverse();
 				return result;
 			}

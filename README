@@ -1,5 +1,3 @@
-NOTE
-
 THIS SOFTWARE IS NOT LICENCED UNDER ANY SPECIFIC LICENCE TO THE GENERAL PUBLIC YET.
 
 While I propably will choose an open source maybe even copyleft licence I am not
@@ -9,3 +7,9 @@ rights to anyone before I am sure on to what licence I will choose for my projec
 While you could pull yourself a copy you will most likely not be able to run the 
 software because of missing database schemes, data and assets. If you want to see
 a current development version live please visit http://www.danielbaulig.de/A3O/
+
+All assets and (none code) static ressources found in this repository are not part 
+of this project but originate from the TripleA project and are licenced under GNU 
+GPL. 
+Please refer to http://triplea.sourceforge.net for more information on the 
+TripleA project. 
