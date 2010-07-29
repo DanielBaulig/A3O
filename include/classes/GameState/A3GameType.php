@@ -6,10 +6,35 @@ class A3GameTypePDOFactory implements IFactory
 {
 	private $m_pdo;
 	
+	/** PDO statement to load all game types 
+	 * 
+	 * No additional binds needed.
+	 * 
+	 * @var PDOStatement
+	 */
 	private $m_loadAllGameTypes;
+	
+	/** PDO statement to load options for a type specified by it's id
+	 *
+	 * type id must be bound to :type_id
+	 *
+	 * @var PDOStatement
+	 */	
 	private $m_loadOptionsByGameTypeId;
+	
+	/** PDO statement to load options for a type specified by it's name
+	 *
+	 * type name mist be bound to :type
+	 *
+	 * @var PDOStatement
+	 */
 	private $m_loadOptionsByGameTypeName;
 	
+	/** Creates a type factory for the specified game.
+	 *
+	 * @param PDO $pdo
+	 * @param int $game
+	 */
 	public function __construct( PDO $pdo, $game )
 	{
 		$this->m_pdo = $pdo;
@@ -30,6 +55,12 @@ class A3GameTypePDOFactory implements IFactory
 		$this->m_loadOptionsByGameTypeName = $this->m_pdo->prepare( $sql_options_name );
 	}
 	
+	/** Creates a type object from key
+	 * 
+	 * @see include/classes/IFactory::createSingleProduct()
+	 * 
+	 * @return A3GameType
+	 */
 	public function createSingleProduct( $key )
 	{
 		$type = array ( A3GameType::NAME => $key );
@@ -55,7 +86,26 @@ class A3GameTypePDOFactory implements IFactory
 	
 	public function createAllProducts( )
 	{
+		$types = array ( );
+		$this->m_loadAllGameTypes->execute( );
 		
+		while( $type = $this->m_loadAllGameTypes->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+		{
+			$this->m_loadOptionsByGameTypeId->bindValue( ':type_id', $type['id'], PDO::PARAM_STR );
+			$this->m_loadOptionsByGameTypeId->execute( );
+			
+			$options = array( );
+			
+			while ( $option = $this->m_loadOptionsByGameTypeId->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+			{
+				$options[$option['name']] = $option['value'];
+			}
+			$type[A3GameType::OPTIONS] = $options;
+			unset( $type['id'] );
+			$types[ $type[A3GameType::NAME ] ] = new A3GameType( $type );
+		}
+		
+		return types;
 	}
 }
 

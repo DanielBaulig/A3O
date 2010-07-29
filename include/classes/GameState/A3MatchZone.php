@@ -11,7 +11,7 @@ class A3MatchZonePDOFactory implements IFactory
 	private $m_loadConnectionsSingleGameZone;
 	private $m_loadPiecesSingleGameZone;
 	
-	private $m_loadAllGameZones;
+	private $m_loadBaseAllGameZones;
 
 	public function __construct( PDO $pdo, $match )
 	{
@@ -45,6 +45,50 @@ class A3MatchZonePDOFactory implements IFactory
 			. ' ON o.typeoption_type = t.type_id WHERE o.typeoption_name = \'movement\' AND p.pieces_zone = :zone_id;'; 
 		
 		$this->m_loadPiecesSingleGameZone = $this->m_pdo->prepare( $pieces_sql );
+		
+		$all_base_sql = 
+			'SELECT z.zone_id AS id, bz.basezone_name AS name, n.nation_name AS owner,'
+			. ' bz.basezone_water AS water, bz.basezone_production AS production'
+			. ' FROM a3o_zones AS z INNER JOIN a3o_basezones AS bz ON z.zone_basezone = bz.basezone_id'
+			. ' INNER JOIN a3o_matches AS m ON z.zone_match = m.match_id INNER JOIN a3o_games AS g'
+			. ' ON m.match_game = g.game_id LEFT JOIN a3o_nations AS n ON g.game_id = n.nation_game'
+			. ' AND z.zone_owner = n.nation_id WHERE z.zone_match = :match_id;';
+			
+		$this->m_loadBaseAllGameZones = $this->m_pdo->prepare( $all_base_sql );
+		$this->m_loadBaseAllGameZones->bindValue( 'match_id', $match, PDO::PARAM_INT );
+	}
+	
+	protected function loadConnections( $zone_id )
+	{
+		$this->m_loadConnectionsSingleGameZone->bindValue( ':zone_id', $zone_id, PDO::PARAM_INT );
+		$this->m_loadConnectionsSingleGameZone->execute( );
+		$connections = array ( );
+		while ( $row = $this->m_loadConnectionsSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+		{
+			$connections[$row['zone']] = true;
+		}
+		return $connections;
+	}
+	
+	protected function loadPieces( $zone_id )
+	{
+		$this->m_loadPiecesSingleGameZone->bindValue( ':zone_id', $zone_id, PDO::PARAM_INT );
+		$this->m_loadPiecesSingleGameZone->execute( );
+		$pieces = array( );
+		while ( $row = $this->m_loadPiecesSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+		{
+			if (!array_key_exists( 'movement' , $row ) )
+			{
+				$row['movement'] = 0;
+			}
+			
+			for( $i = 0; $i < $row['movement']; $i++ )
+			{
+				$pieces[$row['nation']][$row['type']][$i] = 0;
+			}
+			$pieces[$row['nation']][$row['type']][$row['movement']] = $row['count'];
+		}
+		return $pieces;
 	}
 	
 	public function createSingleProduct( $key )
@@ -58,25 +102,9 @@ class A3MatchZonePDOFactory implements IFactory
 			throw new Exception('Invalid zone key!');
 		}
 
-		$this->m_loadConnectionsSingleGameZone->bindValue( ':zone_id', $zone['id'], PDO::PARAM_INT );
-		$this->m_loadConnectionsSingleGameZone->execute( );
-		$connections = array ( );
-		while ( $row = $this->m_loadConnectionsSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
-		{
-			$connections[$row['zone']] = true;
-		}
+		$connections = $this->loadConnections( $zone['id'] );		
+		$pieces = $this->loadPieces( $zone['id'] );
 		
-		$this->m_loadPiecesSingleGameZone->bindValue( ':zone_id', $zone['id'], PDO::PARAM_INT );
-		$this->m_loadPiecesSingleGameZone->execute( );
-		$pieces = array( );
-		while ( $row = $this->m_loadPiecesSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
-		{
-			for( $i = 0; $i < $row['movement']; $i++ )
-			{
-				$pieces[$row['nation']][$row['type']][$i] = 0;
-			}
-			$pieces[$row['nation']][$row['type']][$row['movement']] = $row['count'];
-		}
 		$zone[A3MatchZone::CONNECTIONS] = $connections;
 		$zone[A3MatchZone::PIECES] = $pieces;
 		unset($zone['id']);
@@ -85,7 +113,20 @@ class A3MatchZonePDOFactory implements IFactory
 	
 	public function createAllProducts( )
 	{
+		$zones = array( );
+		$this->m_loadBaseAllGameZones->execute( );
+		while ( $zone = $this->m_loadBaseAllGameZones->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+		{
+			$connections = $this->loadConnections( $zone['id'] );			
+			$pieces = $this->loadPieces( $zone['id'] );
+			
+			$zone[A3MatchZone::PIECES] = $pieces;
+			$zone[A3MatchZone::CONNECTIONS] = $connections;
+			unset($zone['id']);
+			$zones[ $zone[A3MatchZone::NAME] ] = new A3MatchZone( $zone );
+		}
 		
+		return $zones;
 	}
 }
 
@@ -93,7 +134,9 @@ class A3MatchZoneRegistry
 {
 	private static $instance = null;
 	
-	/**
+	/** Initializes the registry
+	 * 
+	 * Throws an exception if the registry is already initialized.
 	 * 
 	 * @param IFactory $factory
 	 * @throws Exception
@@ -109,6 +152,13 @@ class A3MatchZoneRegistry
 			throw new Exception('Registry already initialized.');
 		}
 	}
+	
+	/** Returns an instance of the registry
+	 * 
+	 * Throws an exception if the registry is not initialized yet.
+	 * 
+	 * @throws Exception
+	 */
 	public static function getInstance( )
 	{
 		if ( self::$instance === null )
@@ -117,6 +167,11 @@ class A3MatchZoneRegistry
 		}
 		return self::$instance;
 	}
+	
+	/** Returns the element specified by $key from the registry.
+	 * 
+	 * @param mixed $key
+	 */
 	public static function getElement( $key )
 	{
 		return self::getInstance( )->getElement( $key );
@@ -262,6 +317,7 @@ class A3MatchZone
 		
 		foreach( $path as $step )
 		{
+			// TODO: Add checks if the zone has "impassible" flag (eg Sahara)
 			// dont allow to enter a zone that is not connected
 			if ( !$zone->hasConnection( $step ) )
 			{

@@ -25,5 +25,10 @@ $archangel = $reg->getElement( 'Archangel' );
 
 $archangel->hasConnection( 'Belarus' ) or die( 'Should have connection' );
 
-$archangel->countPieces( 'Russia', 'infantry' ) == 5 or die( 'Wrong number of infantry' );
-$archangel->countPieces( 'Russia', 'tank' ) == 2 or die( 'Wrong number of tanks' );
+$archangel->countPieces( 'Russia', 'infantry' ) == 5 or print( 'Wrong number of infantry' );
+$archangel->countPieces( 'Russia', 'tank' ) == 2 or print( 'Wrong number of tanks' );
+
+A3GameTypeRegistry::getElement( 'infantry')->attack == 1 or print( 'Infantry attack wrong' );
+A3GameTypeRegistry::getElement( 'tank')->attack == 3 or print( 'Tank attack wrong' );
+A3GameTypeRegistry::getElement( 'infantry')->defense == 2 or print( 'Infantry defense wrong' );
+A3GameTypeRegistry::getElement( 'tank')->defense == 3 or print( 'Tank defense wrong' );

@@ -18,8 +18,8 @@ assert_options(ASSERT_QUIET_EVAL, 1);
 assert_options(ASSERT_CALLBACK, 'my_assert_handler');
 
 
-Logger::hookErrorHandler( );
-Logger::hookExceptionHandler( );
+//Logger::hookErrorHandler( );
+//Logger::hookExceptionHandler( );
 Logger::getLogger( )->createEchoLogger( Logger::LOG_ALL );
 
 $sql_host = 'localhost';
