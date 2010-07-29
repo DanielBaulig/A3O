@@ -3,7 +3,7 @@
 require_once dirname(__FILE__).'/../Registry.php';
 require_once dirname(__FILE__).'/A3GameType.php';
 
-class A3GameZonePDOFactory implements IFactory
+class A3MatchZonePDOFactory implements IFactory
 {
 	private $m_pdo;
 	
@@ -52,6 +52,11 @@ class A3GameZonePDOFactory implements IFactory
 		$this->m_loadBaseSingleGameZone->bindValue( ':zone', $key, PDO::PARAM_STR );
 		$this->m_loadBaseSingleGameZone->execute( );
 		$zone = $this->m_loadBaseSingleGameZone->fetch( PDO::FETCH_ASSOC );
+		
+		if ( !$zone )
+		{
+			throw new Exception('Invalid zone key!');
+		}
 
 		$this->m_loadConnectionsSingleGameZone->bindValue( ':zone_id', $zone['id'], PDO::PARAM_INT );
 		$this->m_loadConnectionsSingleGameZone->execute( );
@@ -66,12 +71,16 @@ class A3GameZonePDOFactory implements IFactory
 		$pieces = array( );
 		while ( $row = $this->m_loadPiecesSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
+			for( $i = 0; $i < $row['movement']; $i++ )
+			{
+				$pieces[$row['nation']][$row['type']][$i] = 0;
+			}
 			$pieces[$row['nation']][$row['type']][$row['movement']] = $row['count'];
 		}
-		$zone[A3GameZone::CONNECTIONS] = $connections;
-		$zone[A3GameZone::PIECES] = $pieces;
+		$zone[A3MatchZone::CONNECTIONS] = $connections;
+		$zone[A3MatchZone::PIECES] = $pieces;
 		unset($zone['id']);
-		return new A3GameZone( $zone );
+		return new A3MatchZone( $zone );
 	}
 	
 	public function createAllProducts( )
@@ -80,7 +89,7 @@ class A3GameZonePDOFactory implements IFactory
 	}
 }
 
-class A3GameZoneRegistry
+class A3MatchZoneRegistry
 {
 	private static $instance = null;
 	
@@ -115,7 +124,7 @@ class A3GameZoneRegistry
 	private function __construct(){}
 }
 
-class A3GameZone
+class A3MatchZone
 {
 	/** Holds the game zones data
 	 * 
@@ -146,11 +155,11 @@ class A3GameZone
 	public function countPieces( $nation, $type, $minimumRemainingMovement = 0 )
 	{
 		$piecesCount = 0;
-		if ( array_key_exists( $nation, $this->m_data[A3GameZone::PIECES] ) && array_key_exists( $type, $this->m_data[A3GameZone::PIECES][$nation] ) )
+		if ( array_key_exists( $nation, $this->m_data[A3MatchZone::PIECES] ) && array_key_exists( $type, $this->m_data[A3MatchZone::PIECES][$nation] ) )
 		{
 			for( $i=$minimumRemainingMovement; $i <= A3GameTypeRegistry::getElement( $type )->movement; $i++ )
 			{
-				$piecesCount += $this->m_data[A3GameZone::PIECES][$nation][$type][$i];
+				$piecesCount += $this->m_data[A3MatchZone::PIECES][$nation][$type][$i];
 			}
 		}
 		return $piecesCount;
@@ -173,18 +182,18 @@ class A3GameZone
 	 */
 	public function movePieces( $count, $nation, $type, $distance, $target )
 	{
-		if ( array_key_exists( $this->m_data[A3GameZone::PIECES], $nation ) && array_key_exists( $this->m_data[A3GameZone::PIECES][$nation], $type ) )
+		if ( array_key_exists( $nation , $this->m_data[A3MatchZone::PIECES] ) && array_key_exists( $type, $this->m_data[A3MatchZone::PIECES][$nation] ) )
 		{
 			$total = 0;
 			$target = A3GameZoneRegistry::getElement( $target );
 			if ( $target !== null )
 			{
-				for( $i = $distance; $i <= A3GameTypeRegistry::getElement( $type )->maximumMovement; $i++ )
+				for( $i = $distance; $i <= A3GameTypeRegistry::getElement( $type )->movement; $i++ )
 				{
-					$moved = $count > $this->m_data[A3GameZone::PIECES][$nation][$type][$i] ? $this->m_data[A3GameZone::PIECES][$nation][$type][$i] : $count;
+					$moved = $count > $this->m_data[A3MatchZone::PIECES][$nation][$type][$i] ? $this->m_data[A3MatchZone::PIECES][$nation][$type][$i] : $count;
 					$count = $count - $moved;
-					$target->m_data[A3GameZone::PIECES][$nation][$type][$i - $distance] += $moved;
-					$this->m_data[A3GameZone::PIECES][$nation][$type][$i] -= $moved;
+					$target->m_data[A3MatchZone::PIECES][$nation][$type][$i - $distance] += $moved;
+					$this->m_data[A3MatchZone::PIECES][$nation][$type][$i] -= $moved;
 					$total += $moved;
 				}
 				if ( $total === $count )
@@ -217,8 +226,8 @@ class A3GameZone
 	 */
 	public function hasConnection( $zone )
 	{
-		return array_key_exists( $zone, $this->m_data[A3GameZone::CONNECTIONS] ) || 
-			array_key_exists( $this->data[A3GameZone::NAME], A3GameZoneRegistry::getElement( $zone )->data[A3GameZone::CONNECTIONS] );
+		return array_key_exists( $zone, $this->m_data[A3MatchZone::CONNECTIONS] ) || 
+			array_key_exists( $this->data[A3MatchZone::NAME], A3GameZoneRegistry::getElement( $zone )->data[A3MatchZone::CONNECTIONS] );
 	}
 	
 	/** Checks if a path starting from here is valid.
@@ -265,12 +274,12 @@ class A3GameZone
 			// if water is null (no terrain checking) simply skip
 			// if water is true, only allow to enter water
 			// if water is false, only allow to enter land
-			if ( $water !== null && $water !== $zone->m_data[A3GameZone::WATER] )
+			if ( $water !== null && $water !== $zone->m_data[A3MatchZone::WATER] )
 			{
 				return false;
 			}
 			// if alliance checking is enabled only allow to enter zones controlled by given alliance
-			if( $alliance !== null && ! $alliance->isAllied( $zone->m_data[A3GameZone::OWNER] ) )
+			if( $alliance !== null && ! $alliance->isAllied( $zone->m_data[A3MatchZone::OWNER] ) )
 			{
 				// however only, if this is not the last zone and triggering combat is not allowed
 				if ( !($step === $endZone && $combat) )

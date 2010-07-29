@@ -1,0 +1,121 @@
+<?php
+
+require_once dirname(__FILE__).'/../Registry.php';
+
+class A3GameTypePDOFactory implements IFactory
+{
+	private $m_pdo;
+	
+	private $m_loadAllGameTypes;
+	private $m_loadOptionsByGameTypeId;
+	private $m_loadOptionsByGameTypeName;
+	
+	public function __construct( PDO $pdo, $game )
+	{
+		$this->m_pdo = $pdo;
+		
+		$sql_types = 'SELECT type_id AS id, type_name AS name FROM a3o_types WHERE type_game = :game_id;';
+		
+		$this->m_loadAllGameTypes = $this->m_pdo->prepare( $sql_types );
+		$this->m_loadAllGameTypes->bindValue( ':game_id', $game, PDO::PARAM_INT );
+		
+		$sql_options_id = 'SELECT typeoption_name AS name, typeoption_value AS value FROM a3o_typeoptions'
+			. ' WHERE typeoptions_type = :type_id;';
+			
+		$this->m_loadOptionsByGameTypeId = $this->m_pdo->prepare( $sql_options_id );
+		
+		$sql_options_name = 'SELECT typeoption_name AS name, typeoption_value AS value FROM a3o_typeoptions'
+			. ' INNER JOIN a3o_types ON type_id = typeoption_type WHERE type_name = :type;';
+			
+		$this->m_loadOptionsByGameTypeName = $this->m_pdo->prepare( $sql_options_name );
+	}
+	
+	public function createSingleProduct( $key )
+	{
+		$type = array ( A3GameType::NAME => $key );
+		$this->m_loadOptionsByGameTypeName->bindValue( ':type', $key, PDO::PARAM_STR );
+		$this->m_loadOptionsByGameTypeName->execute( );
+		
+		$options = array( );
+		
+		while ( $row = $this->m_loadOptionsByGameTypeName->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+		{
+			$options[$row['name']] = $row['value'];
+		}
+		
+		if ( count( $options ) <= 0 )
+		{
+			throw new Exception('Invalid type key!');
+		}
+		
+		$type[A3GameType::OPTIONS] = $options;
+		
+		return new A3GameType( $type );
+	}
+	
+	public function createAllProducts( )
+	{
+		
+	}
+}
+
+class A3GameTypeRegistry
+{
+	private static $instance = null;
+	
+	public static function initializeRegistry( IFactory $factory )
+	{
+		if ( self::$instance !== null )
+		{
+			throw new Exception('Registry already initialized.');
+		}
+		self::$instance = new BaseRegistry( $factory );
+	}
+	
+	public static function getInstance( )
+	{
+		if ( self::$instance === null )
+		{
+			throw new Exception('Registry must be initialized first.');
+		}
+		return self::$instance;
+	}
+	public static function getElement( $key )
+	{
+		return self::getInstance( )->getElement( $key );
+	}
+}
+
+class A3GameType
+{
+	protected $m_data;
+	protected $m_name;
+	protected $m_options;
+	
+	const NAME = 'name';
+	const OPTIONS = 'options';
+	
+	public function __construct( array $data )
+	{
+		$this->m_data = $data;
+		$this->m_name = $data['name'];
+		$this->m_options = $data['options'];
+	}
+	
+	public function __isset( $option )
+	{
+		return array_key_exists( $option, $this->m_data[A3GameType::OPTIONS] );
+	}
+	
+	public function __get( $option )
+	{
+		if( $this->__isset( $option ) )
+		{
+			return $this->m_data[A3GameType::OPTIONS][$option];
+		}
+		else
+		{
+			throw new Exception( 'Option not in type.' );
+		}
+	}
+}
