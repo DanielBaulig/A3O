@@ -1,6 +1,6 @@
 <?php
 
-require_once 'Logger.php';
+require_once dirname(__FILE__).'/Logger.php';
 
 interface IFactory
 {
