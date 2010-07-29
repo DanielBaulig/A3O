@@ -2,9 +2,15 @@
 
 require_once dirname(__FILE__).'/../Registry.php';
 
-abstract class A3GameZoneRegistry
+class A3GameZoneRegistry
 {
 	private static $instance = null;
+	
+	/**
+	 * 
+	 * @param IFactory $factory
+	 * @throws Exception
+	 */
 	public static function initializeRegistry( IFactory $factory )
 	{
 		if ( self::$instance === null )

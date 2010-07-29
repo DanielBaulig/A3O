@@ -1,6 +1,7 @@
 <?php
 
 require_once dirname(__FILE__).'/Logger.php';
+require_once dirname(__FILE__).'/IFactory.php';
 
 interface IFactory
 {
@@ -16,16 +17,52 @@ interface IFactory
 	public function createAllProducts( );
 }
 
-abstract class BaseRegistry
+/** Implementation of the Registry pattern
+ * 
+ * Should be inherited and extended to also implement
+ * the singleton pattern. Sadly, due to how PHP handles
+ * class variables in inheritence the singleton pattern
+ * cannot be implemented in the base class.
+ * 
+ * @author Daniel Baulig
+ */
+class BaseRegistry
 {
+	/** The factory providing the factory methods to instanciate 
+	 * elements contained in the registry.
+	 * 
+	 * @var IFactory
+	 */
 	private $m_factory;
+	/** The elements contained in the registry.
+	 * 
+	 * @var array
+	 */
 	private $m_elements = array( );
 	
+	/** Instanciates the Registry.
+	 * 
+	 * The factory provides the methods to instanciate elements
+	 * by their key.
+	 * 
+	 * @param IFactory $factory
+	 */
 	public function __construct( IFactory $factory )
 	{
 		$this->m_factory = $factory;
 	}
 	
+	/** Returns an element contained in the registry.
+	 * 
+	 * If $forceReload is specified and true or $key is no yet
+	 * found in the registry cache, getElement will (re-)load
+	 * the element referenced by $key using the methods provided
+	 * by the factory.
+	 * 
+	 * @param mixed $key
+	 * @param boolean $forceReload (optional)
+	 * @return mixed
+	 */
 	public function getElement( $key, $forceReload = false )
 	{
 		if ($forceReload || !array_key_exists($key, $this->m_elements))
@@ -33,7 +70,7 @@ abstract class BaseRegistry
 			try
 			{
 				$element = $this->m_factory->createProduct( $key );
-				if ( $element != NULL )
+				if ( $element != null )
 				{
 					$this->m_elements[$key] = $element;	
 				}
@@ -43,14 +80,28 @@ abstract class BaseRegistry
 				Logger::getLogger( )->logException( $e );
 			}
 		}
-		return $this->m_elements[$key];
+		// From http://www.php.net/manual/en/language.types.array.php
+		// Note: Attempting to access an array key which has not been defined is the same as 
+		// accessing any other undefined variable: an E_NOTICE-level error message will be 
+		// issued, and the result will be NULL. 
+		return @$this->m_elements[$key];
 	}	
 	
+	/** Returns a reference to the entire collection of elements allready loaded in the registry.
+	 * 
+	 * @return &array
+	 */
 	public function &getAllElements( )
 	{
 		return $this->m_elements;
 	}	
 	
+	/** Loads all elements into the registry cache. 
+	 *
+	 * This is especially useful if getting the entire collection of elements
+	 * is (much) quicker than getting each element one by one and use of a wide
+	 * range of elements is anticipated. 
+	 */
 	public function precacheElements( )
 	{
 		$this->m_elements = $this->m_factory->createAllProducts( );
