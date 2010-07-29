@@ -1,7 +1,6 @@
 <?php
 
 require_once dirname(__FILE__).'/Logger.php';
-require_once dirname(__FILE__).'/IFactory.php';
 
 interface IFactory
 {
@@ -19,10 +18,9 @@ interface IFactory
 
 /** Implementation of the Registry pattern
  * 
- * Should be inherited and extended to also implement
- * the singleton pattern. Sadly, due to how PHP handles
- * class variables in inheritence the singleton pattern
- * cannot be implemented in the base class.
+ * Should be encapsulated to implement the singleton pattern. 
+ * Sadly, due to how PHP handles class variables in inheritence 
+ * the singleton pattern cannot be implemented here.
  * 
  * @author Daniel Baulig
  */
@@ -69,7 +67,7 @@ class BaseRegistry
 		{
 			try
 			{
-				$element = $this->m_factory->createProduct( $key );
+				$element = $this->m_factory->createSingleProduct( $key );
 				if ( $element != null )
 				{
 					$this->m_elements[$key] = $element;	
