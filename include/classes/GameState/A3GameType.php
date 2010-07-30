@@ -165,7 +165,7 @@ class A3GameType
 		}
 		else
 		{
-			throw new Exception( 'Option not in type.' );
+			return 0;
 		}
 	}
 }

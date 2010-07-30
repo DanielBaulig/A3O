@@ -10,6 +10,7 @@ class A3MatchZonePDOFactory implements IFactory
 	private $m_loadBaseSingleGameZone;
 	private $m_loadConnectionsSingleGameZone;
 	private $m_loadPiecesSingleGameZone;
+	private $m_loadOptionsSingleMatchZone;
 	
 	private $m_loadBaseAllGameZones;
 
@@ -39,12 +40,21 @@ class A3MatchZonePDOFactory implements IFactory
 			
 		
 		$pieces_sql =
-			'SELECT t.type_name AS type, o.typeoption_value AS movement, n.nation_name AS nation, p.pieces_count AS count'
+			'SELECT t.type_name AS type, COALESCE(o.typeoption_value, \'0\') AS movement, n.nation_name AS nation, p.pieces_count AS count'
 			. ' FROM a3o_pieces AS p INNER JOIN a3o_types AS t ON t.type_id = p.pieces_type'
-			. ' INNER JOIN a3o_nations AS n ON n.nation_id = p.pieces_nation INNER JOIN a3o_typeoptions AS o'
-			. ' ON o.typeoption_type = t.type_id WHERE o.typeoption_name = \'movement\' AND p.pieces_zone = :zone_id;'; 
+			. ' INNER JOIN a3o_nations AS n ON n.nation_id = p.pieces_nation LEFT JOIN a3o_typeoptions AS o'
+			. ' ON o.typeoption_type = t.type_id AND o.typeoption_name = \'movement\' WHERE p.pieces_zone = :zone_id;'; 
 		
 		$this->m_loadPiecesSingleGameZone = $this->m_pdo->prepare( $pieces_sql );
+		
+		
+		$options_sql =
+			'SELECT bzo.basezoneoption_name AS name, bzo.basezoneoption_value AS value FROM a3o_zones AS z'
+			. ' INNER JOIN a3o_basezones AS bz ON bz.basezone_id = z.zone_basezone INNER JOIN' 
+			. ' a3o_basezoneoptions AS bzo ON bzo.basezoneoptions_basezone = bz.basezone_id WHERE z.zone_id = :zone_id;';
+			
+		$this->m_loadOptionsSingleMatchZone = $this->m_pdo->prepare( $options_sql );
+		
 		
 		$all_base_sql = 
 			'SELECT z.zone_id AS id, bz.basezone_name AS name, n.nation_name AS owner,'
@@ -77,11 +87,6 @@ class A3MatchZonePDOFactory implements IFactory
 		$pieces = array( );
 		while ( $row = $this->m_loadPiecesSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
-			if (!array_key_exists( 'movement' , $row ) )
-			{
-				$row['movement'] = 0;
-			}
-			
 			for( $i = 0; $i < $row['movement']; $i++ )
 			{
 				$pieces[$row['nation']][$row['type']][$i] = 0;
@@ -89,6 +94,20 @@ class A3MatchZonePDOFactory implements IFactory
 			$pieces[$row['nation']][$row['type']][$row['movement']] = $row['count'];
 		}
 		return $pieces;
+	}
+	
+	//TODO: Think about if it is usefull to not load options by zone_id but by basezone_id, which will safe plenty of JOINs
+	protected function loadOptions( $zone_id )
+	{
+		$this->m_loadOptionsSingleMatchZone->bindValue( ':zone_id', $zone_id, PDO::PARAM_INT );
+		$this->m_loadOptionsSingleMatchZone->execute( );
+		
+		$options = array( );
+		
+		while( $option = $this->m_loadOptionsSingleMatchZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+		{
+			
+		}
 	}
 	
 	public function createSingleProduct( $key )
@@ -99,7 +118,7 @@ class A3MatchZonePDOFactory implements IFactory
 		
 		if ( !$zone )
 		{
-			throw new Exception('Invalid zone key!');
+			throw new Exception('Specified zone not found.');
 		}
 
 		$connections = $this->loadConnections( $zone['id'] );		
@@ -198,6 +217,7 @@ class A3MatchZone
 	const NAME = 'name';
 	const PIECES = 'pieces';
 	const CONNECTIONS = 'connections';
+	const OPTIONS = 'options';
 	const OWNER = 'owner';
 	const WATER = 'water';
 	const PRODUCTION = 'production';
@@ -345,6 +365,16 @@ class A3MatchZone
 			}
 		}
 		return true;
+	}
+	
+	public function isWater( )
+	{
+		return $this->m_data[A3MatchZone::WATER];
+	}
+	
+	public function getName( )
+	{
+		return $this->m_data[self::NAME];
 	}
 	
 	public function __construct( array $data )
