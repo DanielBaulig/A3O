@@ -118,7 +118,9 @@ class A3MatchZonePDOFactory implements IFactory
 		
 		if ( !$zone )
 		{
-			throw new Exception('Specified zone not found.');
+			// $key must have been sanitized, in case this message is displayed to a user!
+			// TODO: Sanitize all incoming keys (type-, zone-, nation- and alliance names) upon first touch!
+			throw new DomainException('Specified zone ' . $key . ' not valid.');
 		}
 
 		$connections = $this->loadConnections( $zone['id'] );		
@@ -246,46 +248,49 @@ class A3MatchZone
 	
 	/** Moves up to $count pieces of nation $nation and type $type to zone $target draining $distance movement.
 	 * 
-	 * Returns true if transfer was successfull and false if there was a problem (eg. 
-	 * less pieces available than specified or target zone not valid).
-	 * Even if returning false the method will transfer as many pieces as possible.
 	 * Use {@link canMovePieces} and {@link isPathValid} to check if a given move is valid 
-	 * entirely without moving any pieces.
+	 * entirely before calling movePieces. movePieces will move as many pieces as possible,
+	 * even if the input values exceed the number of pieces present. Be aware that this happen
+	 * due to an exploit attempt. Be sure to secure against such attempts.
+	 * 
+	 * Also $count values of less than 0 can be used to seriously exploit this method.
+	 * Because of this the method will throw an UnexpectedValueException if $count has
+	 * a value of below 0.
 	 * 
 	 * @param int $count
 	 * @param string $nation
 	 * @param string $type
 	 * @param int $distance
 	 * @param string $target
-	 * @return boolean
 	 */
 	public function movePieces( $count, $nation, $type, $distance, $target )
 	{
+		if ( $count < 0 )
+		{
+			throw new UnexpectedValueException( 'Possible attempt at exploiting.' );
+		}
 		if ( array_key_exists( $nation , $this->m_data[A3MatchZone::PIECES] ) && array_key_exists( $type, $this->m_data[A3MatchZone::PIECES][$nation] ) )
 		{
 			$total = 0;
 			$target = A3GameZoneRegistry::getZone( $target );
-			if ( $target !== null )
+
+			$typeMovement = A3GameTypeRegistry::getType( $type )->movement;
+			
+			for( $i = $distance; $i <= $typeMovement; $i++ )
 			{
-				for( $i = $distance; $i <= A3GameTypeRegistry::getType( $type )->movement; $i++ )
-				{
-					$moved = $count > $this->m_data[A3MatchZone::PIECES][$nation][$type][$i] ? $this->m_data[A3MatchZone::PIECES][$nation][$type][$i] : $count;
-					$count = $count - $moved;
-					$target->m_data[A3MatchZone::PIECES][$nation][$type][$i - $distance] += $moved;
-					$this->m_data[A3MatchZone::PIECES][$nation][$type][$i] -= $moved;
-					$total += $moved;
-				}
-				if ( $total === $count )
-				{
-					return true;
-				}
+				$moved = $count > $this->m_data[A3MatchZone::PIECES][$nation][$type][$i] ? $this->m_data[A3MatchZone::PIECES][$nation][$type][$i] : $count;
+				$count = $count - $moved;
+				$target->m_data[A3MatchZone::PIECES][$nation][$type][$i - $distance] += $moved;
+				$this->m_data[A3MatchZone::PIECES][$nation][$type][$i] -= $moved;
+				$total += $moved;
 			}
 		}
-		return false;
 	}
 	
 	/** Returns if the amount of pieces of $nation nation and $type type can be moved 
 	 * (transfered) from this zone to the given zone.
+	 * 
+	 * Be aware that $count and $distance may not be negative!
 	 * 
 	 * @param int $count
 	 * @param string $nation
@@ -295,7 +300,8 @@ class A3MatchZone
 	 */
 	public function canMovePieces( $count, $nation, $type, $distance )
 	{
-		return $this->countPieces( $nation, $type, $distance ) >= $count;
+		$moveable = $this->countPieces( $nation, $type, $distance );
+		return $moveable !== 0 && $moveable >= $count;
 	}
 	
 	/** Checks if this zone has a connection to the given zone.
@@ -305,8 +311,12 @@ class A3MatchZone
 	 */
 	public function hasConnection( $zone )
 	{
-		return array_key_exists( $zone, $this->m_data[A3MatchZone::CONNECTIONS] ) || 
-			array_key_exists( $this->data[A3MatchZone::NAME], A3GameZoneRegistry::getZone( $zone )->data[A3MatchZone::CONNECTIONS] );
+		if ( array_key_exists( $zone, $this->m_data[A3MatchZone::CONNECTIONS] ) )
+		{
+			return true;
+		}
+		$zone = A3MatchZoneRegistry::getZone( $zone );
+		return array_key_exists( $this->m_data[A3MatchZone::NAME], $zone->m_data[A3MatchZone::CONNECTIONS] );
 	}
 	
 	/** Checks if a path starting from here is valid.
@@ -334,7 +344,10 @@ class A3MatchZone
 	public function isValidPath( array $path, $water = null, $alliance = null, $combat = false )
 	{
 		$zone = $this;
-		$alliance = A3GameAllianceRegistry::getAlliance( $alliance );
+		if ( $alliance !== null )
+		{
+			$alliance = A3GameAllianceRegistry::getAlliance( $alliance );
+		}
 		
 		// get zone where movement ends
 		$endZone = end( $path );
@@ -349,7 +362,7 @@ class A3MatchZone
 			}
 			
 			// create/get A3GameZone object for the upcoming zone
-			$zone = A3GameZoneRegistry::getElement( $step );
+			$zone = A3MatchZoneRegistry::getZone( $step );
 			
 			// if water is null (no terrain checking) simply skip
 			// if water is true, only allow to enter water
@@ -384,13 +397,5 @@ class A3MatchZone
 	public function __construct( array $data )
 	{
 		$this->m_data = $data;
-		$this->m_name = $data['name'];
-		$this->m_owner = $data['owner'];
-		//$this->m_production = $data['production'];
-		//$this->m_water = $data['water'];
-
-		// copy arrays
-		$this->m_connections = $data['connections'];
-		$this->m_pieces = $data['pieces'];
 	}
 }

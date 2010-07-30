@@ -1,2 +1,5 @@
 images/
 import/
+.settings/
+.buildpath
+.project

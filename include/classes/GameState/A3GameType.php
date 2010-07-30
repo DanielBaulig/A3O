@@ -73,10 +73,14 @@ class A3GameTypePDOFactory implements IFactory
 		{
 			$options[$row['name']] = $row['value'];
 		}
-		
+		// check if there was any option found
 		if ( count( $options ) <= 0 )
 		{
-			throw new Exception('Invalid type key!');
+			// types can indeed exist in the database without any options attached
+			// but in reality this does not make any logical sense, so even if there
+			// is a possibility, that the type does exist in the database but has no
+			// options attached, we will treat the type as if it does not exist.
+			throw new DomainException('Specified type ' . $key . ' not valid.');
 		}
 		
 		$type[A3GameType::OPTIONS] = $options;
