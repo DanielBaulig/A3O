@@ -45,7 +45,7 @@ class BaseRegistry
 	 * 
 	 * @param IFactory $factory
 	 */
-	public function __construct( IFactory $factory )
+	protected function __construct( IFactory $factory )
 	{
 		$this->m_factory = $factory;
 	}

@@ -45,7 +45,7 @@ class A3GameTypePDOFactory implements IFactory
 		$this->m_loadAllGameTypes->bindValue( ':game_id', $game, PDO::PARAM_INT );
 		
 		$sql_options_id = 'SELECT typeoption_name AS name, typeoption_value AS value FROM a3o_typeoptions'
-			. ' WHERE typeoptions_type = :type_id;';
+			. ' WHERE typeoption_type = :type_id;';
 			
 		$this->m_loadOptionsByGameTypeId = $this->m_pdo->prepare( $sql_options_id );
 		
@@ -105,11 +105,11 @@ class A3GameTypePDOFactory implements IFactory
 			$types[ $type[A3GameType::NAME ] ] = new A3GameType( $type );
 		}
 		
-		return types;
+		return $types;
 	}
 }
 
-class A3GameTypeRegistry
+class A3GameTypeRegistry extends BaseRegistry
 {
 	private static $instance = null;
 	
@@ -119,7 +119,7 @@ class A3GameTypeRegistry
 		{
 			throw new Exception('Registry already initialized.');
 		}
-		self::$instance = new BaseRegistry( $factory );
+		self::$instance = new A3GameTypeRegistry( $factory );
 	}
 	
 	public static function getInstance( )
@@ -130,9 +130,9 @@ class A3GameTypeRegistry
 		}
 		return self::$instance;
 	}
-	public static function getElement( $key )
+	public static function getType( $key )
 	{
-		return self::getInstance( )->getElement( $key );
+		return self::$instance->getElement( $key );
 	}
 }
 

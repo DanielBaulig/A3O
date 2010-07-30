@@ -51,7 +51,7 @@ class A3MatchZonePDOFactory implements IFactory
 		$options_sql =
 			'SELECT bzo.basezoneoption_name AS name, bzo.basezoneoption_value AS value FROM a3o_zones AS z'
 			. ' INNER JOIN a3o_basezones AS bz ON bz.basezone_id = z.zone_basezone INNER JOIN' 
-			. ' a3o_basezoneoptions AS bzo ON bzo.basezoneoptions_basezone = bz.basezone_id WHERE z.zone_id = :zone_id;';
+			. ' a3o_basezoneoptions AS bzo ON bzo.basezoneoption_basezone = bz.basezone_id WHERE z.zone_id = :zone_id;';
 			
 		$this->m_loadOptionsSingleMatchZone = $this->m_pdo->prepare( $options_sql );
 		
@@ -123,9 +123,11 @@ class A3MatchZonePDOFactory implements IFactory
 
 		$connections = $this->loadConnections( $zone['id'] );		
 		$pieces = $this->loadPieces( $zone['id'] );
+		$options = $this->loadOptions( $zone['id'] );
 		
 		$zone[A3MatchZone::CONNECTIONS] = $connections;
 		$zone[A3MatchZone::PIECES] = $pieces;
+		$zone[A3MatchZone::OPTIONS] = $options;
 		unset($zone['id']);
 		return new A3MatchZone( $zone );
 	}
@@ -138,9 +140,12 @@ class A3MatchZonePDOFactory implements IFactory
 		{
 			$connections = $this->loadConnections( $zone['id'] );			
 			$pieces = $this->loadPieces( $zone['id'] );
+			$options = $this->loadOptions( $zone['id'] );
 			
 			$zone[A3MatchZone::PIECES] = $pieces;
 			$zone[A3MatchZone::CONNECTIONS] = $connections;
+			$zone[A3MatchZone::OPTIONS] = $options;
+			
 			unset($zone['id']);
 			$zones[ $zone[A3MatchZone::NAME] ] = new A3MatchZone( $zone );
 		}
@@ -149,7 +154,7 @@ class A3MatchZonePDOFactory implements IFactory
 	}
 }
 
-class A3MatchZoneRegistry
+class A3MatchZoneRegistry extends BaseRegistry
 {
 	private static $instance = null;
 	
@@ -164,7 +169,7 @@ class A3MatchZoneRegistry
 	{
 		if ( self::$instance === null )
 		{
-			self::$instance = new BaseRegistry( $factory );
+			self::$instance = new A3MatchZoneRegistry( $factory );
 		} 
 		else
 		{
@@ -191,11 +196,10 @@ class A3MatchZoneRegistry
 	 * 
 	 * @param mixed $key
 	 */
-	public static function getElement( $key )
+	public static function getZone( $key )
 	{
-		return self::getInstance( )->getElement( $key );
+		return self::$instance->getElement( $key );
 	}
-	private function __construct(){}
 }
 
 class A3MatchZone
@@ -232,7 +236,7 @@ class A3MatchZone
 		$piecesCount = 0;
 		if ( array_key_exists( $nation, $this->m_data[A3MatchZone::PIECES] ) && array_key_exists( $type, $this->m_data[A3MatchZone::PIECES][$nation] ) )
 		{
-			for( $i=$minimumRemainingMovement; $i <= A3GameTypeRegistry::getElement( $type )->movement; $i++ )
+			for( $i=$minimumRemainingMovement; $i <= A3GameTypeRegistry::getType( $type )->movement; $i++ )
 			{
 				$piecesCount += $this->m_data[A3MatchZone::PIECES][$nation][$type][$i];
 			}
@@ -260,10 +264,10 @@ class A3MatchZone
 		if ( array_key_exists( $nation , $this->m_data[A3MatchZone::PIECES] ) && array_key_exists( $type, $this->m_data[A3MatchZone::PIECES][$nation] ) )
 		{
 			$total = 0;
-			$target = A3GameZoneRegistry::getElement( $target );
+			$target = A3GameZoneRegistry::getZone( $target );
 			if ( $target !== null )
 			{
-				for( $i = $distance; $i <= A3GameTypeRegistry::getElement( $type )->movement; $i++ )
+				for( $i = $distance; $i <= A3GameTypeRegistry::getType( $type )->movement; $i++ )
 				{
 					$moved = $count > $this->m_data[A3MatchZone::PIECES][$nation][$type][$i] ? $this->m_data[A3MatchZone::PIECES][$nation][$type][$i] : $count;
 					$count = $count - $moved;
@@ -302,7 +306,7 @@ class A3MatchZone
 	public function hasConnection( $zone )
 	{
 		return array_key_exists( $zone, $this->m_data[A3MatchZone::CONNECTIONS] ) || 
-			array_key_exists( $this->data[A3MatchZone::NAME], A3GameZoneRegistry::getElement( $zone )->data[A3MatchZone::CONNECTIONS] );
+			array_key_exists( $this->data[A3MatchZone::NAME], A3GameZoneRegistry::getZone( $zone )->data[A3MatchZone::CONNECTIONS] );
 	}
 	
 	/** Checks if a path starting from here is valid.
@@ -330,7 +334,7 @@ class A3MatchZone
 	public function isValidPath( array $path, $water = null, $alliance = null, $combat = false )
 	{
 		$zone = $this;
-		$alliance = A3GameAllianceRegistry::getElement( $alliance );
+		$alliance = A3GameAllianceRegistry::getAlliance( $alliance );
 		
 		// get zone where movement ends
 		$endZone = end( $path );
@@ -369,7 +373,7 @@ class A3MatchZone
 	
 	public function isWater( )
 	{
-		return $this->m_data[A3MatchZone::WATER];
+		return $this->m_data[A3MatchZone::OPTIONS]['water'];
 	}
 	
 	public function getName( )
@@ -382,8 +386,8 @@ class A3MatchZone
 		$this->m_data = $data;
 		$this->m_name = $data['name'];
 		$this->m_owner = $data['owner'];
-		$this->m_production = $data['production'];
-		$this->m_water = $data['water'];
+		//$this->m_production = $data['production'];
+		//$this->m_water = $data['water'];
 
 		// copy arrays
 		$this->m_connections = $data['connections'];
