@@ -5,7 +5,7 @@ require_once dirname(__FILE__).'/Logger.php';
 interface IFactory
 {
 	/** Returns a product referenced by key
-	 * 
+	 *  
 	 * @param mixed $key
 	 */
 	public function createSingleProduct( $key );
