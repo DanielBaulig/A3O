@@ -15,7 +15,7 @@ class A3GameNationPDOFactory implements IFactory
 		
 		while( $alliance = $this->m_loadAlliancesSingleNation->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
-			$alliances[$alliance['name']] = true;
+			$alliances[ $alliance[A3GameAlliance::NAME] ] = true;
 		}
 		return $alliances;
 	}
@@ -28,7 +28,7 @@ class A3GameNationPDOFactory implements IFactory
 		{
 			$nation[A3GameNation::ALLIANCES] = $this->loadAlliances( $nation['id'] );
 			unset( $nation['id'] );
-			$nations[ $nation['name'] ] = new A3GameNation( $nation );
+			$nations[ $nation[A3GameNation::NAME] ] = new A3GameNation( $nation );
 		}
 		return $nations;
 	}
@@ -54,21 +54,23 @@ class A3GameNationPDOFactory implements IFactory
 	{
 		$this->m_pdo = $pdo;
 		
-		$sql_nations = 'SELECT n.nation_id AS id, n.nation_name AS name FROM a3o_nations AS n WHERE n.nation_game = :game_id;';
+		$sql_nations = 'SELECT n.nation_id AS id, n.nation_name AS name FROM a3o_nations AS n ' 
+			. 'WHERE n.nation_game = :game_id;';
 		
 		$this->m_loadAllGameNations = $this->m_pdo->prepare( $sql_nations );
 		$this->m_loadAllGameNations->bindValue( ':game_id', $game, PDO::PARAM_INT );
 		
-		$sql_nation = 'SELECT n.nation_id AS id, n.nation_name AS name FROM a3o_nations AS n WHERE n.nation_name = :nation;';
+		$sql_nation = 'SELECT n.nation_id AS id, n.nation_name AS name FROM a3o_nations AS n'
+			. ' WHERE n.nation_name = :nation LIMIT 1;';
 		
 		$this->m_loadSingleGameNation = $this->m_pdo->prepare( $sql_nation );
 		
-		$sql_alliances_id = 
+		$sql_alliances = 
 			'SELECT a.alliance_name AS name FROM a3o_alliances AS a INNER JOIN a3o_alliancenations AS an ON'
 			. ' an.alliancenation_alliance = a.alliance_id INNER JOIN a3o_nations AS n ON'
 			. ' n.nation_id = an.alliancenation_nation WHERE n.nation_id = :nation_id;';
 		
-		$this->m_loadAlliancesSingleNation = $this->m_pdo->prepare( $sql_alliances_id );
+		$this->m_loadAlliancesSingleNation = $this->m_pdo->prepare( $sql_alliances );
 	}
 }
 

@@ -73,9 +73,9 @@ class A3MatchZonePDOFactory implements IFactory
 		$this->m_loadConnectionsSingleGameZone->bindValue( ':zone_id', $zone_id, PDO::PARAM_INT );
 		$this->m_loadConnectionsSingleGameZone->execute( );
 		$connections = array ( );
-		while ( $row = $this->m_loadConnectionsSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+		while ( $connection = $this->m_loadConnectionsSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
-			$connections[$row['zone']] = true;
+			$connections[$connection['zone']] = true;
 		}
 		return $connections;
 	}
@@ -106,7 +106,7 @@ class A3MatchZonePDOFactory implements IFactory
 		
 		while( $option = $this->m_loadOptionsSingleMatchZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
-			
+		//TODO: Implement A3MatchZone->loadOptions  	
 		}
 	}
 	
