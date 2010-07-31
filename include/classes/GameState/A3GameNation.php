@@ -54,7 +54,7 @@ class A3GameNationPDOFactory implements IFactory
 	{
 		$this->m_pdo = $pdo;
 		
-		$sql_nations = 'SELECT n.nation_id AS id, n.nation_name AS name FROM a3o_nations AS n WHERE n.game_id = :game_id;';
+		$sql_nations = 'SELECT n.nation_id AS id, n.nation_name AS name FROM a3o_nations AS n WHERE n.nation_game = :game_id;';
 		
 		$this->m_loadAllGameNations = $this->m_pdo->prepare( $sql_nations );
 		$this->m_loadAllGameNations->bindValue( ':game_id', $game, PDO::PARAM_INT );
