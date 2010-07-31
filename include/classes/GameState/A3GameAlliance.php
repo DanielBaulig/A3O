@@ -1,5 +1,11 @@
 <?php
 
+/** This class implements the Factory pattern and is capable
+ * of loading alliances for a specified game from the database
+ * and building A3GameAlliance objects for each of them.
+ * 
+ * @author Daniel Baulig
+ */
 class A3GameAlliancePDOFactory implements IFactory
 {
 	protected $m_pdo;
@@ -7,7 +13,12 @@ class A3GameAlliancePDOFactory implements IFactory
 	protected $m_loadSingleAllianceNations;
 	protected $m_loadAllGameAliances;
 	
-	public function __construct( PDO $pdo, $game )
+	/** Initializes the factory and sets up the queries and the PDOStatements
+	 * 
+	 * @param PDO $pdo
+	 * @param int $game_id
+	 */
+	public function __construct( PDO $pdo, $game_id )
 	{
 		$this->m_pdo = $pdo;
 		
@@ -15,7 +26,7 @@ class A3GameAlliancePDOFactory implements IFactory
 			'SELECT a.alliance_id AS id, a.alliance_name AS name FROM a3o_alliances AS a WHERE a.alliance_game = :game_id;';
 		
 		$this->m_loadAllGameAliances = $this->m_pdo->prepare( $sql_alliances );
-		$this->m_loadAllGameAliances->bindValue( ':game_id', $game );
+		$this->m_loadAllGameAliances->bindValue( ':game_id', $game_id );
 		
 		
 		$sql_alliance_nations =
@@ -30,9 +41,15 @@ class A3GameAlliancePDOFactory implements IFactory
 			. ' a.alliance_game = :game_id AND a.alliance_name = :alliance LIMIT 1;';
 			
 		$this->m_loadSingleAlliance = $this->m_pdo->prepare( $sql_alliance );
-		$this->m_loadSingleAlliance->bindValue( ':game_id', $game );
+		$this->m_loadSingleAlliance->bindValue( ':game_id', $game_id );
 	}	
 	
+	/** Loads all alliances from the database, creates A3GameAlliance from them and returns them in an array
+	 * 
+	 * (non-PHPdoc)
+	 * @see include/classes/IFactory::createAllProducts()
+	 * @return array
+	 */
 	public function createAllProducts( )
 	{
 		$this->m_loadAllGameAliances->execute( );
@@ -48,6 +65,10 @@ class A3GameAlliancePDOFactory implements IFactory
 		return $alliances;
 	}
 	
+	/** Loads all nations belonging to a specified alliance
+	 *
+	 * @param int $alliance_id
+	 */
 	protected function loadNations( $alliance_id )
 	{
 		$this->m_loadSingleAllianceNations->bindValue( ':alliance_id', $alliance_id );
@@ -63,6 +84,15 @@ class A3GameAlliancePDOFactory implements IFactory
 		return $nations;
 	} 
 	
+	/** Creates a single A3GameAlliance object for an alliance specified by $key.
+	 * 
+	 * If $key is not found in the database throws a DomainException exception.
+	 * 
+	 * (non-PHPdoc)
+	 * @see include/classes/IFactory::createSingleProduct()
+	 * @return A3GameAlliance
+	 * @throws DomainException
+	 */
 	public function createSingleProduct( $key )
 	{
 		$this->m_loadSingleAlliance->bindValue( ':alliance', $key );
@@ -82,6 +112,14 @@ class A3GameAlliancePDOFactory implements IFactory
 	}
 }
 
+/** Implements the Registry pattern and the Singleton creational pattern.
+ * Is basicly a key => value store where key is a string (name) and value
+ * are possibly all A3GameAlliance objects for a single game.
+ * 
+ * @author Daniel Baulig
+ * @see BaseRegistry
+ * @see A3MatchZoneRegistry
+ */
 class A3GameAllianceRegistry extends BaseRegistry
 {
 	private static $instance = null;
@@ -110,6 +148,10 @@ class A3GameAllianceRegistry extends BaseRegistry
 	}
 }
 
+/** I think a am repeating myself. Look at the other GameState classes.
+ * 
+ * @author Daniel Baulig
+ */
 class A3GameAlliance
 {
 	protected $m_data;

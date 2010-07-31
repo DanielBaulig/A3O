@@ -3,6 +3,13 @@
 require_once dirname(__FILE__).'/../Registry.php';
 require_once dirname(__FILE__).'/A3GameType.php';
 
+/** A3MatchZonePDOFactory takes an PDO object and the id to a specific
+ * match and handles creation of A3MatchZone objects for that match by
+ * loading all neccessary data from the PDO instance and creating the
+ * objects from it. It implements the Factory pattern.
+ * 
+ * @author Daniel Baulig
+ */
 class A3MatchZonePDOFactory implements IFactory
 {
 	private $m_pdo;
@@ -14,7 +21,13 @@ class A3MatchZonePDOFactory implements IFactory
 	
 	private $m_loadBaseAllGameZones;
 
-	public function __construct( PDO $pdo, $match )
+	/** Constructs the A3MatchZone factory, setting up the queries
+	 * and the PDOStatement objects.
+	 * 
+	 * @param PDO $pdo
+	 * @param int $match_id
+	 */
+	public function __construct( PDO $pdo, $match_id )
 	{
 		$this->m_pdo = $pdo;
 		
@@ -27,7 +40,7 @@ class A3MatchZonePDOFactory implements IFactory
 			. ' AND z.zone_owner = n.nation_id WHERE z.zone_match = :match_id AND bz.basezone_name = :zone LIMIT 1;'; 
 						
 		$this->m_loadBaseSingleGameZone = $this->m_pdo->prepare( $base_sql );	
-		$this->m_loadBaseSingleGameZone->bindValue( ':match_id', $match, PDO::PARAM_INT );
+		$this->m_loadBaseSingleGameZone->bindValue( ':match_id', $match_id, PDO::PARAM_INT );
 
 		
 		$connections_sql =
@@ -38,7 +51,7 @@ class A3MatchZonePDOFactory implements IFactory
 			
 		$this->m_loadConnectionsSingleGameZone = $this->m_pdo->prepare( $connections_sql );
 			
-		
+		// COALESCE will return the first non NULL value in its parameter list
 		$pieces_sql =
 			'SELECT t.type_name AS type, COALESCE(o.typeoption_value, \'0\') AS movement, n.nation_name AS nation, p.pieces_count AS count'
 			. ' FROM a3o_pieces AS p INNER JOIN a3o_types AS t ON t.type_id = p.pieces_type'
@@ -65,9 +78,22 @@ class A3MatchZonePDOFactory implements IFactory
 			. ' AND z.zone_owner = n.nation_id WHERE z.zone_match = :match_id;';
 			
 		$this->m_loadBaseAllGameZones = $this->m_pdo->prepare( $all_base_sql );
-		$this->m_loadBaseAllGameZones->bindValue( 'match_id', $match, PDO::PARAM_INT );
+		$this->m_loadBaseAllGameZones->bindValue( 'match_id', $match_id, PDO::PARAM_INT );
 	}
 	
+	/** Loads all connections belonging to to $zone_id and returns them as an array.
+	 * 
+	 * Note, that "belonging to" means that the zone is listed in the
+	 * firstzone field. If it is only listed in the secondzone field
+	 * it will not be returned. As such each entry in the connection
+	 * tables is a directed edge.
+	 * That means that you eithr need two entries for bidirectional
+	 * connections or implement the hasConnection method to actually
+	 * check in both directions. This is the current implementation.
+	 * 
+	 * @param int $zone_id
+	 * @return array
+	 */
 	protected function loadConnections( $zone_id )
 	{
 		$this->m_loadConnectionsSingleGameZone->bindValue( ':zone_id', $zone_id, PDO::PARAM_INT );
@@ -80,6 +106,11 @@ class A3MatchZonePDOFactory implements IFactory
 		return $connections;
 	}
 	
+	/** Loads all pieces in the zone referenced by $zone_id and returns them as an array.
+	 * 
+	 * @param int $zone_id
+	 * @return array
+	 */
 	protected function loadPieces( $zone_id )
 	{
 		$this->m_loadPiecesSingleGameZone->bindValue( ':zone_id', $zone_id, PDO::PARAM_INT );
@@ -96,7 +127,20 @@ class A3MatchZonePDOFactory implements IFactory
 		return $pieces;
 	}
 	
-	//TODO: Think about if it is usefull to not load options by zone_id but by basezone_id, which will safe plenty of JOINs
+	//TODO: Profile performance boost zone_id vs basezone_id
+	/** Loads all options belonging to the basezone to which $zone_id belongs and returns them as an array
+	 * 
+	 * Regarding todo: the options loaded aren't actually direcly connected to the zone,
+	 * but rather to the basezone of the zone. Since there is no direct instanciation of
+	 * basezones (there is basicly no need) the loading is placed in the A3MatchZone factory
+	 * and the options are stored in the A3MatchZone objects. However, the loading is for conveinience
+	 * reasons based on the $zone_id and not the basezone_id, although basezone_id could be 
+	 * taken from a previous query while loading the zone and could be used to load the options
+	 * faster. Maybe this should be changed to take basezone_id instead of zone_id.
+	 * 
+	 * @param int $zone_id
+	 * @return array
+	 */
 	protected function loadOptions( $zone_id )
 	{
 		$this->m_loadOptionsSingleMatchZone->bindValue( ':zone_id', $zone_id, PDO::PARAM_INT );
@@ -110,6 +154,16 @@ class A3MatchZonePDOFactory implements IFactory
 		}
 	}
 	
+	/** Creates a single A3MatchZone object from key and returns it.
+	 * 
+	 * If there is no zone with the specified key found in the database
+	 * the method will throw a DomainException exception.
+	 * 
+	 * @see include/classes/IFactory::createSingleProduct()
+	 * @param string $key
+	 * @return A3MatchZone
+	 * @throws DomainException
+	 */
 	public function createSingleProduct( $key )
 	{
 		$this->m_loadBaseSingleGameZone->bindValue( ':zone', $key, PDO::PARAM_STR );
@@ -119,7 +173,7 @@ class A3MatchZonePDOFactory implements IFactory
 		if ( !$zone )
 		{
 			// $key must have been sanitized, in case this message is displayed to a user!
-			// TODO: Sanitize all incoming keys (type-, zone-, nation- and alliance names) upon first touch!
+			//TODO: Sanitize all incoming keys (type-, zone-, nation- and alliance names) upon first touch!
 			throw new DomainException('Specified zone ' . $key . ' not valid.');
 		}
 
@@ -134,6 +188,11 @@ class A3MatchZonePDOFactory implements IFactory
 		return new A3MatchZone( $zone );
 	}
 	
+	/** Loads each A3MatchZone for this match and returns them in an array
+	 * (non-PHPdoc)
+	 * @see include/classes/IFactory::createAllProducts()
+	 * @return array
+	 */
 	public function createAllProducts( )
 	{
 		$zones = array( );
@@ -156,6 +215,26 @@ class A3MatchZonePDOFactory implements IFactory
 	}
 }
 
+/** A3MatchZoneRegistry is a implementation of the Registry pattern and stores
+ * key => value pairs where keys are strings (names) and the values are possibly
+ * all A3MatchZone objects of a specific match.
+ * 
+ * The registry is able to either precache all the match's zones by calling the
+ * precacheElements method or load zones ad-hoc from the database as they are
+ * requested.
+ * The registry uses a factory implementing the IFactory interface that it gets 
+ * passed in the constructor to construct the A3MatchZone objects.
+ * 
+ * Note that it also implements the Signleton pattern and as such cannot be 
+ * instanciated directly, but only by calling the initializeRegistry class
+ * method.
+ * After the Registry is initialized you can either use it's getInstance class
+ * method to directly access the registry object or have the getZone class method
+ * marshall your requests for you.
+ * 
+ * @author Daniel Baulig
+ * @see BaseRegistry
+ */
 class A3MatchZoneRegistry extends BaseRegistry
 {
 	private static $instance = null;
@@ -196,6 +275,10 @@ class A3MatchZoneRegistry extends BaseRegistry
 	
 	/** Returns the element specified by $key from the registry.
 	 * 
+	 * Note that this method does not check if the registry was already initialized.
+	 * You are responsible to make sure the registry is ready and setup when calling
+	 * this method.
+	 * 
 	 * @param mixed $key
 	 */
 	public static function getZone( $key )
@@ -215,6 +298,9 @@ class A3MatchZone
 	 * 'water' => boolean $water
 	 * 'production' => int $production
 	 * 
+	 * See also the following class constants for a means of securing the array
+	 * is adressed correctly even if keys may change in future implementations.
+	 * 
 	 * @var array
 	 * @access protected
 	 */
@@ -228,7 +314,7 @@ class A3MatchZone
 	const WATER = 'water';
 	const PRODUCTION = 'production';
 
-	/** Returns the number of pieces of the given type
+	/** Returns the number of pieces of the given type in this zone
 	 * 
 	 * @param string $type
 	 * @return int 
@@ -246,7 +332,7 @@ class A3MatchZone
 		return $piecesCount;
 	}
 	
-	/** Moves up to $count pieces of nation $nation and type $type to zone $target draining $distance movement.
+	/** Moves up to $count pieces of nation $nation and type $type to zone $target draining $distance movement. 
 	 * 
 	 * Use {@link canMovePieces} and {@link isPathValid} to check if a given move is valid 
 	 * entirely before calling movePieces. movePieces will move as many pieces as possible,
@@ -304,7 +390,11 @@ class A3MatchZone
 		return $moveable !== 0 && $moveable >= $count;
 	}
 	
+	//TODO: refactor this behaviour out of a baseclass
 	/** Checks if this zone has a connection to the given zone.
+	 * 
+	 * Note that the zone checks in both directions and thus presumes
+	 * connections are always bidirectional.
 	 * 
 	 * @param string $zone
 	 * @return boolean
@@ -382,16 +472,6 @@ class A3MatchZone
 			}
 		}
 		return true;
-	}
-	
-	public function isWater( )
-	{
-		return $this->m_data[A3MatchZone::OPTIONS]['water'];
-	}
-	
-	public function getName( )
-	{
-		return $this->m_data[self::NAME];
 	}
 	
 	public function __construct( array $data )
