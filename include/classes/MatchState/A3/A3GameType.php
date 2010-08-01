@@ -42,8 +42,6 @@ class A3GameType extends GameType
 	
 	public function canTraversePath( array $path, $nation, $combatMovement )
 	{
-		//return true;
-		
 		// too far
 		if( count($path) - 1 > $this->getOption( 'movement' ) )
 		{

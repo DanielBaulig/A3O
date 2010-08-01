@@ -4,6 +4,7 @@ require_once dirname(__FILE__) . '/../GameType.php';
 require_once dirname(__FILE__) . '/../MatchZone.php';
 require_once dirname(__FILE__) . '/../GameNation.php';
 require_once dirname(__FILE__) . '/../GameAlliance.php';
+require_once dirname(__FILE__) . '/../MatchPlayer.php';
 
 require_once dirname(__FILE__) . '/A3GameType.php';
 require_once dirname(__FILE__) . '/A3MatchZone.php'; 

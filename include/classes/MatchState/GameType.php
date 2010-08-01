@@ -210,16 +210,6 @@ class GameType
 		$this->m_data = $data;
 	}
 
-	/** isset magic method for options
-	 * 
-	 * @param string $option
-	 * @return boolean
-	 */
-	public function __isset( $option )
-	{
-		return array_key_exists( $option, $this->m_data[GameType::OPTIONS] );
-	}
-
 	protected function getOption( $name )
 	{
 		if( array_key_exists( $name, $this->m_data[GameType::OPTIONS] ) )
@@ -232,20 +222,4 @@ class GameType
 		}
 	}
 	
-	/** __get magic method for options
-	 * 
-	 * @param string $option
-	 * @return mixed
-	 */
-	public function __get( $option )
-	{
-		if( $this->__isset( $option ) )
-		{
-			return $this->m_data[GameType::OPTIONS][$option];
-		}
-		else
-		{
-			return 0;
-		}
-	}
 }
