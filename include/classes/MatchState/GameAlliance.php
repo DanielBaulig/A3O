@@ -2,11 +2,11 @@
 
 /** This class implements the Factory pattern and is capable
  * of loading alliances for a specified game from the database
- * and building A3GameAlliance objects for each of them.
+ * and building GameAlliance objects for each of them.
  * 
  * @author Daniel Baulig
  */
-class A3GameAlliancePDOFactory implements IFactory
+class GameAlliancePDOFactory implements IFactory
 {
 	protected $m_pdo;
 	protected $m_loadSingleAlliance;
@@ -44,7 +44,7 @@ class A3GameAlliancePDOFactory implements IFactory
 		$this->m_loadSingleAlliance->bindValue( ':game_id', $game_id );
 	}	
 	
-	/** Loads all alliances from the database, creates A3GameAlliance from them and returns them in an array
+	/** Loads all alliances from the database, creates GameAlliance from them and returns them in an array
 	 * 
 	 * (non-PHPdoc)
 	 * @see include/classes/IFactory::createAllProducts()
@@ -57,9 +57,9 @@ class A3GameAlliancePDOFactory implements IFactory
 		
 		while( $alliance = $this->m_loadAllGameAliances->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) ) 
 		{
-			$alliance[A3GameAlliance::NATIONS] = $this->loadNations( $alliance['id'] );
+			$alliance[GameAlliance::NATIONS] = $this->loadNations( $alliance['id'] );
 			unset( $alliance['id'] );
-			$alliances[$alliance[A3GameAlliance::NAME]] = new A3GameAlliance( $alliance );
+			$alliances[$alliance[GameAlliance::NAME]] = new GameAlliance( $alliance );
 		}
 		
 		return $alliances;
@@ -78,19 +78,19 @@ class A3GameAlliancePDOFactory implements IFactory
 		
 		while( $nation = $this->m_loadSingleAllianceNations->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
-			$nations[$nation[A3GameNation::NAME]] = true;
+			$nations[$nation[GameNation::NAME]] = true;
 		}
 		
 		return $nations;
 	} 
 	
-	/** Creates a single A3GameAlliance object for an alliance specified by $key.
+	/** Creates a single GameAlliance object for an alliance specified by $key.
 	 * 
 	 * If $key is not found in the database throws a DomainException exception.
 	 * 
 	 * (non-PHPdoc)
 	 * @see include/classes/IFactory::createSingleProduct()
-	 * @return A3GameAlliance
+	 * @return GameAlliance
 	 * @throws DomainException
 	 */
 	public function createSingleProduct( $key )
@@ -100,10 +100,10 @@ class A3GameAlliancePDOFactory implements IFactory
 		
 		if ( $alliance = $this->m_loadSingleAlliance->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
-			$alliance[A3GameAlliance::NATIONS] = $this->loadNations( $alliance['id'] );
+			$alliance[GameAlliance::NATIONS] = $this->loadNations( $alliance['id'] );
 			unset( $alliance['id'] );
 
-			return new A3GameAlliance( $alliance );
+			return new GameAlliance( $alliance );
 		}
 		else
 		{
@@ -114,13 +114,13 @@ class A3GameAlliancePDOFactory implements IFactory
 
 /** Implements the Registry pattern and the Singleton creational pattern.
  * Is basicly a key => value store where key is a string (name) and value
- * are possibly all A3GameAlliance objects for a single game.
+ * are possibly all GameAlliance objects for a single game.
  * 
  * @author Daniel Baulig
  * @see BaseRegistry
- * @see A3MatchZoneRegistry
+ * @see MatchZoneRegistry
  */
-class A3GameAllianceRegistry extends BaseRegistry
+class GameAllianceRegistry extends BaseRegistry
 {
 	private static $instance = null;
 	
@@ -130,7 +130,7 @@ class A3GameAllianceRegistry extends BaseRegistry
 		{
 			throw new Exception( 'Registry already initialized.' );
 		}
-		self::$instance = new A3GameAllianceRegistry( $factory );
+		self::$instance = new GameAllianceRegistry( $factory );
 	}
 	
 	public static function getInstance( )
@@ -152,7 +152,7 @@ class A3GameAllianceRegistry extends BaseRegistry
  * 
  * @author Daniel Baulig
  */
-class A3GameAlliance
+class GameAlliance
 {
 	protected $m_data;
 	

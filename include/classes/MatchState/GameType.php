@@ -1,19 +1,17 @@
 <?php
-
-require_once dirname(__FILE__).'/../Registry.php';
-
-/** Implements the Factory pattern and creates A3GameType objects
+/** Implements the Factory pattern and creates GameType objects
  * for a specific game.
  * 
  * Takes a PDO object and the id to a specific game and creates
- * A3GameType objects from the PDO belonging to that specific
+ * GameType objects from the PDO belonging to that specific
  * game.
  * 
  * @author Daniel Baulig
  */
-class A3GameTypePDOFactory implements IFactory
+class GameTypePDOFactory implements IFactory
 {
 	private $m_pdo;
+	private $m_specialFactory;
 
 	/** PDO statement to load all game types
 	 *
@@ -49,6 +47,7 @@ class A3GameTypePDOFactory implements IFactory
 		//TODO: Refactor SQL to not get options by name, but to get id from a single option
 		// this may be of lower performance but is the better design approach imo
 		$this->m_pdo = $pdo;
+		$this->m_specialFactory;
 
 		$sql_types = 'SELECT type_id AS id, type_name AS name FROM a3o_types WHERE type_game = :game_id;';
 
@@ -66,15 +65,26 @@ class A3GameTypePDOFactory implements IFactory
 		$this->m_loadOptionsByGameTypeName = $this->m_pdo->prepare( $sql_options_name );
 	}
 
+	/** This is so descendent class can override this method to change the type
+	 * of object beeing returned to a child type of GameType
+	 * 
+	 * @param array $data
+	 * @return GameType
+	 */
+	protected function createObject( array $data )
+	{
+		return new GameType( $data );
+	}
+	
 	/** Creates a type object from key
 	 *
 	 * @see include/classes/IFactory::createSingleProduct()
 	 * @param string $key
-	 * @return A3GameType
+	 * @return GameType
 	 */
 	public function createSingleProduct( $key )
 	{
-		$type = array ( A3GameType::NAME => $key );
+		$type = array ( GameType::NAME => $key );
 		$this->m_loadOptionsByGameTypeName->bindValue( ':type', $key, PDO::PARAM_STR );
 		$this->m_loadOptionsByGameTypeName->execute( );
 
@@ -94,9 +104,9 @@ class A3GameTypePDOFactory implements IFactory
 			throw new DomainException( 'Specified type ' . $key . ' not valid.' );
 		}
 
-		$type[A3GameType::OPTIONS] = $options;
+		$type[GameType::OPTIONS] = $options;
 
-		return new A3GameType( $type );
+		return $this->createObject( $type );
 	}
 
 	/** Loads all types for this game from the database and returns them as an array
@@ -118,11 +128,11 @@ class A3GameTypePDOFactory implements IFactory
 				
 			while ( $option = $this->m_loadOptionsByGameTypeId->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 			{
-				$options[ $option[A3GameType::OPTION_NAME] ] = $option[A3GameType::OPTION_VALUE];
+				$options[ $option[GameType::OPTION_NAME] ] = $option[GameType::OPTION_VALUE];
 			}
-			$type[A3GameType::OPTIONS] = $options;
+			$type[GameType::OPTIONS] = $options;
 			unset( $type['id'] );
-			$types[ $type[A3GameType::NAME] ] = new A3GameType( $type );
+			$types[ $type[GameType::NAME] ] = $this->createObject( $type );
 		}
 
 		return $types;
@@ -131,13 +141,13 @@ class A3GameTypePDOFactory implements IFactory
 
 /** Implementation of the Registry pattern. Holds key => value
  * pairs where the key is a string (name) and the value is possibly
- * any A3GameType for a specific game.
+ * any GameType for a specific game.
  * 
  * @author Daniel Baulig
- * @see A3MatchZoneRegistry
+ * @see MatchZoneRegistry
  * @see BaseRegistry
  */
-class A3GameTypeRegistry extends BaseRegistry
+class GameTypeRegistry extends BaseRegistry
 {
 	private static $instance = null;
 
@@ -154,7 +164,7 @@ class A3GameTypeRegistry extends BaseRegistry
 		{
 			throw new Exception('Registry already initialized.');
 		}
-		self::$instance = new A3GameTypeRegistry( $factory );
+		self::$instance = new GameTypeRegistry( $factory );
 	}
 
 	/** Returns the instance of the registry
@@ -162,7 +172,7 @@ class A3GameTypeRegistry extends BaseRegistry
 	 * Throws an exception if the registry is not yet initialized.
 	 * 
 	 * @throws Exception
-	 * @return A3GameTypeRegistry
+	 * @return GameTypeRegistry
 	 */
 	public static function getInstance( )
 	{
@@ -186,11 +196,9 @@ class A3GameTypeRegistry extends BaseRegistry
 	}
 }
 
-class A3GameType
+class GameType
 {
 	protected $m_data;
-	protected $m_name;
-	protected $m_options;
 
 	const NAME = 'name';
 	const OPTIONS = 'options';
@@ -200,8 +208,6 @@ class A3GameType
 	public function __construct( array $data )
 	{
 		$this->m_data = $data;
-		$this->m_name = $data['name'];
-		$this->m_options = $data['options'];
 	}
 
 	/** isset magic method for options
@@ -211,9 +217,21 @@ class A3GameType
 	 */
 	public function __isset( $option )
 	{
-		return array_key_exists( $option, $this->m_data[A3GameType::OPTIONS] );
+		return array_key_exists( $option, $this->m_data[GameType::OPTIONS] );
 	}
 
+	protected function getOption( $name )
+	{
+		if( array_key_exists( $name, $this->m_data[GameType::OPTIONS] ) )
+		{
+			return $this->m_data[GameType::OPTIONS][$name];
+		}
+		else
+		{
+			return 0;
+		}
+	}
+	
 	/** __get magic method for options
 	 * 
 	 * @param string $option
@@ -223,7 +241,7 @@ class A3GameType
 	{
 		if( $this->__isset( $option ) )
 		{
-			return $this->m_data[A3GameType::OPTIONS][$option];
+			return $this->m_data[GameType::OPTIONS][$option];
 		}
 		else
 		{

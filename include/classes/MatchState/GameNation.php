@@ -1,12 +1,12 @@
 <?php
 
 /** This class implements the Factory pattern and is used
- * to build A3GameNation objects for aspecific game using
+ * to build GameNation objects for aspecific game using
  * a PDO connection supplied to the constructor. 
  * 
  * @author Daniel Baulig
  */
-class A3GameNationPDOFactory implements IFactory
+class GameNationPDOFactory implements IFactory
 {
 	protected $m_loadAllGameNations;
 	protected $m_loadSingleGameNation;
@@ -26,12 +26,12 @@ class A3GameNationPDOFactory implements IFactory
 		
 		while( $alliance = $this->m_loadAlliancesSingleNation->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
-			$alliances[ $alliance[A3GameAlliance::NAME] ] = true;
+			$alliances[ $alliance[GameAlliance::NAME] ] = true;
 		}
 		return $alliances;
 	}
 	
-	/** Loads all of this games nations and creates A3GameNation objects and returns them in an array.
+	/** Loads all of this games nations and creates GameNation objects and returns them in an array.
 	 * 
 	 * (non-PHPdoc)
 	 * @see include/classes/IFactory::createAllProducts()
@@ -43,21 +43,21 @@ class A3GameNationPDOFactory implements IFactory
 		$this->m_loadAllGameNations->execute( );
 		while( $nation = $this->m_loadAllGameNations->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
-			$nation[A3GameNation::ALLIANCES] = $this->loadAlliances( $nation['id'] );
+			$nation[GameNation::ALLIANCES] = $this->loadAlliances( $nation['id'] );
 			unset( $nation['id'] );
-			$nations[ $nation[A3GameNation::NAME] ] = new A3GameNation( $nation );
+			$nations[ $nation[GameNation::NAME] ] = new GameNation( $nation );
 		}
 		return $nations;
 	}
 	
-	/** Loads a single nation for this game specified by $key and returns it as A3GameNation object.
+	/** Loads a single nation for this game specified by $key and returns it as GameNation object.
 	 * 
 	 * If key is not a valid reference to a nation in this game the method will throw
 	 * a DomainException exception.
 	 * 
 	 * (non-PHPdoc)
 	 * @see include/classes/IFactory::createSingleProduct()
-	 * @return A3GameNation
+	 * @return GameNation
 	 * @throws DomainException
 	 */
 	public function createSingleProduct( $key )
@@ -67,9 +67,9 @@ class A3GameNationPDOFactory implements IFactory
 		
 		if ( $nation = $this->m_loadSingleGameNation->fetch( PDO::FETCH_ASSOC ) )
 		{
-			$nation[A3GameNation::ALLIANCES] = $this->loadAlliances( $nation['id'] );
+			$nation[GameNation::ALLIANCES] = $this->loadAlliances( $nation['id'] );
 			unset( $nation['id'] );
-			return new A3GameNation( $nation );
+			return new GameNation( $nation );
 		}
 		else
 		{
@@ -103,18 +103,19 @@ class A3GameNationPDOFactory implements IFactory
 			. ' n.nation_id = an.alliancenation_nation WHERE n.nation_id = :nation_id;';
 		
 		$this->m_loadAlliancesSingleNation = $this->m_pdo->prepare( $sql_alliances );
+		
 	}
 }
-/** The A3GameNationRegistry implements the Registry design pattern and
+/** The GameNationRegistry implements the Registry design pattern and
  * the Singleton creational pattern. It is a key => value store where key
- * is a string (name) and value possibly all A3GameNation objects associated
+ * is a string (name) and value possibly all GameNation objects associated
  * with a specific game.
  * 
  * @author Daniel Baulig
  * @see BaseRegistry
- * @see A3MatchZoneRegistry::
+ * @see MatchZoneRegistry::
  */
-class A3GameNationRegistry extends BaseRegistry
+class GameNationRegistry extends BaseRegistry
 {
 	private static $instance = null;
 
@@ -122,15 +123,15 @@ class A3GameNationRegistry extends BaseRegistry
 	{
 		if ( self::$instance !== null )
 		{
-			throw new Exception( 'A3GameNationRegistry already initialized.' );
+			throw new Exception( 'GameNationRegistry already initialized.' );
 		}
-		self::$instance = new A3GameNationRegistry( $factory );
+		self::$instance = new GameNationRegistry( $factory );
 	}
 	public static function getInstance( )
 	{
 		if ( self::$instance === null )
 		{
-			throw new Exception('A3GameNationRegistry not initialized.');
+			throw new Exception('GameNationRegistry not initialized.');
 		}
 		return self::$instance;
 	}
@@ -144,7 +145,7 @@ class A3GameNationRegistry extends BaseRegistry
  * 
  * @author Daniel Baulig
  */
-class A3GameNation
+class GameNation
 {
 	protected $m_data;
 	
@@ -163,8 +164,8 @@ class A3GameNation
 	 */
 	public function isAllyOf( $nation )
 	{
-		$nation =  A3GameNationRegistry::getNation( $nation );
-		foreach( $this->m_data[A3GameNation::ALLIANCES] as $alliance => $ignore )
+		$nation =  GameNationRegistry::getNation( $nation );
+		foreach( $this->m_data[GameNation::ALLIANCES] as $alliance => $ignore )
 		{
 			if ( $nation->isInAlliance( $alliance ) )
 			{
@@ -181,6 +182,6 @@ class A3GameNation
 	 */
 	public function isInAlliance( $alliance )
 	{
-		return array_key_exists( $alliance, $this->m_data[A3GameNation::ALLIANCES] );
+		return array_key_exists( $alliance, $this->m_data[GameNation::ALLIANCES] );
 	}
 } 

@@ -50,6 +50,14 @@ class BaseRegistry
 		$this->m_factory = $factory;
 	}
 	
+	public function swapFactory( IFactory $factory )
+	{
+		$oldFactory = $this->m_factory;
+		$this->m_elements = array( );
+		$this->m_factory = $factory;
+		return $oldFactory;
+	}
+	
 	/** Returns an element contained in the registry.
 	 * 
 	 * If $forceReload is specified and true or $key is no yet
