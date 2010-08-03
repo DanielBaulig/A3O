@@ -1,5 +1,10 @@
 <?php
 
+interface IChange
+{
+	public function apply( );
+}
+
 class ChangeSet implements IChange
 {
 	private $m_changes;
@@ -21,11 +26,6 @@ class ChangeSet implements IChange
 			$change->apply( );
 		}
 	}
-}
-
-interface IChange
-{
-	public function apply( );
 }
 
 class MovePiecesChange implements IChange

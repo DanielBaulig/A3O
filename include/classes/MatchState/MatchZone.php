@@ -210,6 +210,98 @@ class MatchZonePDOFactory implements IFactory
 	}
 }
 
+abstract class MatchZoneStorer extends Storer
+{
+	abstract function store ( MatchZone $zone );
+}
+
+class MatchZonePDOStorer extends MatchZoneStorer
+{
+	protected $m_pdo;
+	
+	protected $m_saveZoneOwner;
+	protected $m_saveZonePieces;
+	protected $m_clearMatchPieces;
+	
+	public function __construct( PDO $pdo, $match_id )
+	{
+		parent::__construct( $zone );
+		
+		$this->m_pdo = $pdo;
+		
+		$sql_owner =
+			'UPDATE a3o_zones AS z INNER JOIN a3o_basezones AS bz ON bz.basezone_id = z.zone_basezone'
+			. ' INNER JOIN a3o_matches m ON z.zone_match = m.match_id'
+			. ' INNER JOIN a3o_games g ON g.game_id = m.match_game' 
+			. ' INNER JOIN a3o_nations AS n ON n.nation_game = g.game_id SET z.zone_owner = n.nation_id'
+			. 'WHERE bz.basezone_name = :zone AND m.match_id = :match_id AND n.nation_name = :nation;';
+			
+		$this->m_saveZoneOwner = $this->m_pdo->prepare( $sql_owner );
+		$this->m_saveZoneOwner->bindValue( ':match_id' , $match_id, PDO::PARAM_INT );
+			
+		$sql_pieces =
+			'INSERT INTO a3o_pieces (pieces_zone, pieces_nation, pieces_type, pieces_count)'
+			. ' SELECT z.zone_id, n.nation_id, t.type_id, :insert_count FROM a3o_zones AS z' 
+			. ' INNER JOIN a3o_basezones AS bz ON bz.basezone_id = z.zone_basezone'
+			. ' INNER JOIN a3o_nations AS n ON n.nation_game = bz.basezone_game' 
+			. ' INNER JOIN a3o_types AS t ON t.type_game = n.nation_game'
+        	. ' INNER JOIN a3o_matches AS m ON m.match_game = t.type_game'
+			. ' WHERE n.nation_name = :nation AND t.type_name = :type AND bz.basezone_name = :zone'
+			. ' AND m.match_id = :match_id ON DUPLICATE KEY UPDATE pieces_count = :update_count;';
+			
+		$this->m_saveZonePieces = $this->m_pdo->prepare( $sql_pieces );
+		$this->m_saveZonePieces->bindValue( ':game_id' , $game_id );
+		
+		$sql_clear_pieces =
+			'DELETE FROM a3o_pieces AS p INNER JOIN a3o_zones AS z ON p.pieces_zone = z.zone_id'
+			. ' WHERE pieces_count = 0 AND z.zone_match = :match_id;';
+		
+		$this->m_clearMatchPieces = $this->m_pdo->prepare( $sql_clear_pieces );
+		$this->m_clearMatchPieces->bindValue( ':match_id' , $match_id );
+	}
+	
+	public function store( MatchZone $zone )
+	{
+		$data = $this->getStoreableData( $zone );
+		
+		$this->m_pdo->beginTransaction( );
+		try 
+		{
+			$this->m_saveZoneOwner->bindValue( ':nation' , $data[MatchZone::OWNER], PDO::PARAM_STR );
+			$this->m_saveZoneOwner->bindValue( ':zone' , $data[MatchZone::NAME], PDO::PARAM_STR );	
+			$this->m_saveZoneOwner->execute( );
+			
+			$this->m_saveZonePieces->bindValue( ':zone' , $data[MatchZone::NAME], PDO::PARAM_STR );
+			foreach( $data[MatchZone::PIECES] as $nation => $pieces )
+			{
+				$this->m_saveZonePieces->bindValue( ':nation' , $nation, PDO::PARAM_STR );
+				foreach( $pieces as $type => $count ) 
+				{
+					$this->m_saveZonePieces->bindValue( ':type' , $type, PDO::PARAM_STR );
+					$this->m_saveZonePieces->bindValue( ':update_count' , $count, PDO::PARAM_INT );
+					$this->m_saveZonePieces->bindValue( ':insert_count' , $count, PDO::PARAM_INT );
+					
+					$this->m_saveZonePieces->execute( );
+				}
+			}
+			
+			$this->
+			
+			$this->m_pdo->commit( );
+		}
+		catch( Exception $e )
+		{
+			$this->m_pdo->rollBack( );
+			throw $e;
+		}
+	}
+	
+	public function clearMatchPieces( )
+	{
+		$this->m_clearMatchPieces->execute( ); 
+	}
+}
+
 /** MatchZoneRegistry is a implementation of the Registry pattern and stores
  * key => value pairs where keys are strings (names) and the values are possibly
  * all MatchZone objects of a specific match.
@@ -282,7 +374,7 @@ class MatchZoneRegistry extends BaseRegistry
 	}
 }
 
-class MatchZone
+class MatchZone implements IStoreable
 {
 	/** Holds the game zones data
 	 * 
@@ -381,6 +473,11 @@ class MatchZone
 		{
 			return 0;
 		}
+	}
+	
+	public function storeData( MatchZoneStorer $storer )
+	{
+		$storer->takeData( $this->m_data );
 	}
 	
 	public function __construct( array $data )

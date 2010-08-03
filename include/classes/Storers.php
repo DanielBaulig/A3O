@@ -6,24 +6,18 @@ interface IStoreable
 
 abstract class Storer
 {
-	private $m_storeable;
 	private $m_dataBuffer;
 	public function takeData( array $data )
 	{
 		$this->m_dataBuffer = $data;
 	}
-	protected function getData( )
+	protected function getStoreableData( IStoreable $storeable )
 	{
-		$this->m_storeable->storeData( $this );
+		$storeable->storeData( $this );
 		return $this->m_dataBuffer;
 	}
 	
-	public function __construct( IStoreable $storeable )
-	{
-		$this->m_storeable = $storeable;
-	}
-	
-	abstract public function store( );
+	abstract public function store( IStoreable $storeable );
 }
 
 interface IStorerFactory
@@ -34,24 +28,26 @@ interface IStorerFactory
 class A3StorerPDOFactory implements IStorerFactory
 {
 	protected $m_pdo;
+	protected $m_match;
 	
 	public function createStorer( IStoreable $storeable )
 	{
 		switch( get_class( $storeable ) )
 		{
 			case 'A3MatchPlayer':
-					return new MatchPlayerPDOStorer( $this->m_pdo, $storeable );
+					return new MatchPlayerPDOStorer( $this->m_pdo, $this->m_match, $storeable );
 			case 'MatchZone':
-					return new MatchZonePDOStorer( $this->m_pdo, $storeable );
+					return new MatchZonePDOStorer( $this->m_pdo, $this->m_match, $storeable );
 			case 'A3MatchState':
-					return new MatchStatePDOStorer( $this->m_pdo, $storeable );
+					return new MatchStatePDOStorer( $this->m_pdo, $this->m_match, $storeable );
 			default:
 				throw new InvalidArgumentException( 'Unknown IStoreable implementation. You are propably using the wrong StorerFactory.' );
 		}
 	}
 	
-	public function __construct( PDO $pdo )
+	public function __construct( PDO $pdo, $match_id )
 	{
 		$this->m_pdo = $pdo;
+		$this->m_match = $match_id;
 	}
 }

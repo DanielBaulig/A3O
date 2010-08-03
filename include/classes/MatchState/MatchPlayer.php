@@ -90,6 +90,89 @@ class MatchPlayerPDOFactory implements IFactory
 	}
 }
 
+abstract class MatchPlayerStorer extends Storer
+{
+	abstract public function store( MatchPlayer $player );
+}
+
+class MatchPlayerPDOStorer extends MatchPlayerStorer
+{
+	protected $m_savePlayerStatement;
+	protected $m_savePlayerOptions;
+	protected $m_clearMatchOptions;
+	protected $m_pdo;
+	
+	public function __construct( PDO $pdo, $match_id )
+	{
+		$this->m_pdo = $pdo;
+		
+		$sql =
+			'INSERT INTO a3o_players ( player_nation, player_user, player_match)'
+			. ' SELECT n.nation_id, :select_user_id, :select_match_id FROM a3o_nations AS n INNER JOIN a3o_matches AS m'
+			. ' ON n.nation_game = m.match_game WHERE m.match_id = :where_match_id AND n.nation_name = :nation'
+			. ' ON DUPLICATE KEY UPDATE player_nation = n.nation_id, player_user = :update_user_id LIMIT 1;';
+		
+		$this->m_savePlayerStatement = $this->m_pdo->prepare( $sql );
+		$this->m_savePlayerStatement->bindValue( ':select_match_id' , $match_id, PDO::PARAM_INT );
+		$this->m_savePlayerStatement->bindValue( ':where_match_id' , $match_id, PDO::PARAM_INT );
+		
+		$sql_option =
+			'INSERT INTO a3o_playeroptions ( playeroption_player, playeroption_name, playeroption_value )'
+			. ' VALUES ( :player_id, :name, :insert_value ) ON DUPLICATE KEY UPDATE'
+			. ' playeroption_value = :update_value LIMIT 1;' ;
+			
+		$this->m_savePlayerOptions = $this->m_pdo->prepare( $sql_option );
+		
+		$sql_clear_options =
+			'DELETE FROM a3o_playeroptions AS o INNER JOIN a3o_players AS p ON o.playeroption_player = p.player_id'
+			. ' WHERE ( p.playeroption_value = \'0\' OR p.playeroption_value = \'\' ) AND p.player_match = :match_id;';
+		$this->m_clearMatchOptions = $this->m_pdo->prepare( $sql_clear_options );
+		$this->m_clearMatchOptions->bindValue( ':match_id' , $match_id, PDO::PARAM_INT );
+	}
+	
+	protected function saveOptions( $player_id, array $options )
+	{
+		//TODO: check performance improvement for ad-hoc multi row insert
+		foreach( $options as $name => $value )
+		{
+			$this->m_savePlayerOptions->bindValue( ':player_id', $player_id, PDO::PARAM_INT );
+			$this->m_savePlayerOptions->bindValue( ':name', $name, PDO::PARAM_STR );
+			$this->m_savePlayerOptions->bindValue( ':insert_value', $value, PDO::PARAM_STR );
+			$this->m_savePlayerOptions->bindValue( ':update_value', $value, PDO::PARAM_STR );
+			
+			$this->m_savePlayerOptions->execute( );
+		}
+	}
+	
+	public function store( MatchPlayer $player  )
+	{
+		$data = $this->getStoreableData( $player );
+		$this->m_pdo->beginTransaction( );
+		try
+		{
+			$this->m_savePlayerStatement->bindValue( ':nation' , $data[MatchPlayer::NATION], PDO::PARAM_STR );
+			$this->m_savePlayerStatement->bindValue( ':select_user_id' , $data[MatchPlayer::USER], PDO::PARAM_INT );
+			$this->m_savePlayerStatement->bindValue( ':update_user_id' , $data[MatchPlayer::USER], PDO::PARAM_INT );
+		
+			$this->m_savePlayerStatement->execute( );
+		
+			$this->saveOptions( $data[MatchPlayer::USER], $data[MatchPlayer::OPTIONS] );
+			
+			$this->m_pdo->commit( );
+		}
+		catch( Exception $e )
+		{
+			$this->m_pdo->rollBack( );
+			throw $e;
+		}
+	}
+
+	public function clearMatchPlayerOptions( )
+	{
+		$this->m_clearMatchOptions->execute( );
+	}
+}
+
 class MatchPlayerRegistry extends BaseRegistry
 {
 	private static $instance = null;
@@ -127,7 +210,7 @@ class MatchPlayerRegistry extends BaseRegistry
 	}
 }
 
-class MatchPlayer
+class MatchPlayer implements IStoreable
 {
 	protected $m_data;
 	
@@ -155,5 +238,10 @@ class MatchPlayer
 		{
 			return 0;
 		}
+	}
+	
+	public function storeData( MatchPlayerStorer $storer )
+	{
+		$storer->takeData( $this->m_data );
 	}
 }
