@@ -210,12 +210,7 @@ class MatchZonePDOFactory implements IFactory
 	}
 }
 
-abstract class MatchZoneStorer extends Storer
-{
-	abstract function store ( MatchZone $zone );
-}
-
-class MatchZonePDOStorer extends MatchZoneStorer
+class MatchZonePDOStorer extends Storer
 {
 	protected $m_pdo;
 	
@@ -225,8 +220,6 @@ class MatchZonePDOStorer extends MatchZoneStorer
 	
 	public function __construct( PDO $pdo, $match_id )
 	{
-		parent::__construct( $zone );
-		
 		$this->m_pdo = $pdo;
 		
 		$sql_owner =
@@ -234,7 +227,7 @@ class MatchZonePDOStorer extends MatchZoneStorer
 			. ' INNER JOIN a3o_matches m ON z.zone_match = m.match_id'
 			. ' INNER JOIN a3o_games g ON g.game_id = m.match_game' 
 			. ' INNER JOIN a3o_nations AS n ON n.nation_game = g.game_id SET z.zone_owner = n.nation_id'
-			. 'WHERE bz.basezone_name = :zone AND m.match_id = :match_id AND n.nation_name = :nation;';
+			. ' WHERE bz.basezone_name = :zone AND m.match_id = :match_id AND n.nation_name = :nation;';
 			
 		$this->m_saveZoneOwner = $this->m_pdo->prepare( $sql_owner );
 		$this->m_saveZoneOwner->bindValue( ':match_id' , $match_id, PDO::PARAM_INT );
@@ -250,7 +243,7 @@ class MatchZonePDOStorer extends MatchZoneStorer
 			. ' AND m.match_id = :match_id ON DUPLICATE KEY UPDATE pieces_count = :update_count;';
 			
 		$this->m_saveZonePieces = $this->m_pdo->prepare( $sql_pieces );
-		$this->m_saveZonePieces->bindValue( ':game_id' , $game_id );
+		$this->m_saveZonePieces->bindValue( ':match_id' , $match_id );
 		
 		$sql_clear_pieces =
 			'DELETE FROM a3o_pieces AS p INNER JOIN a3o_zones AS z ON p.pieces_zone = z.zone_id'
@@ -260,7 +253,15 @@ class MatchZonePDOStorer extends MatchZoneStorer
 		$this->m_clearMatchPieces->bindValue( ':match_id' , $match_id );
 	}
 	
-	public function store( MatchZone $zone )
+	/** Stores the given zone.
+	 * 
+	 * Note that although MatchZone is not hinted due to lack of stricter
+	 * typing on inhertied methods this class will only handle MatchZones
+	 * correctly.
+	 * 
+	 * @param MatchZone $zone
+	 */
+	public function store( IStoreable $zone )
 	{
 		$data = $this->getStoreableData( $zone );
 		
@@ -285,7 +286,7 @@ class MatchZonePDOStorer extends MatchZoneStorer
 				}
 			}
 			
-			$this->
+			//$this->
 			
 			$this->m_pdo->commit( );
 		}
@@ -475,7 +476,7 @@ class MatchZone implements IStoreable
 		}
 	}
 	
-	public function storeData( MatchZoneStorer $storer )
+	public function storeData( Storer $storer )
 	{
 		$storer->takeData( $this->m_data );
 	}

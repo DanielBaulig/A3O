@@ -22,7 +22,7 @@ abstract class Storer
 
 interface IStorerFactory
 {	
-	abstract public function createStorer( IStoreable $storeable );
+	public function createStorer( IStoreable $storeable );
 }
 
 class A3StorerPDOFactory implements IStorerFactory

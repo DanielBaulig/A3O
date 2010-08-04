@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__FILE__) . '/../../Registry.php';
+require_once dirname(__FILE__) . '/../../Storers.php';
 require_once dirname(__FILE__) . '/../GameType.php';
 require_once dirname(__FILE__) . '/../MatchZone.php';
 require_once dirname(__FILE__) . '/../GameNation.php';
