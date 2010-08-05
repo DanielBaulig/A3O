@@ -11,7 +11,7 @@
 class GameTypePDOFactory implements IFactory
 {
 	private $m_pdo;
-	private $m_specialFactory;
+	protected $m_match;
 
 	/** PDO statement to load all game types
 	 *
@@ -42,17 +42,18 @@ class GameTypePDOFactory implements IFactory
 	 * @param PDO $pdo
 	 * @param int $game
 	 */
-	public function __construct( PDO $pdo, $game )
+	public function __construct( PDO $pdo, MatchState $match )
 	{
 		//TODO: Refactor SQL to not get options by name, but to get id from a single option
 		// this may be of lower performance but is the better design approach imo
 		$this->m_pdo = $pdo;
+		$this->m_match = $match;
 		$this->m_specialFactory;
 
 		$sql_types = 'SELECT type_id AS id, type_name AS name FROM a3o_types WHERE type_game = :game_id;';
 
 		$this->m_loadAllGameTypes = $this->m_pdo->prepare( $sql_types );
-		$this->m_loadAllGameTypes->bindValue( ':game_id', $game, PDO::PARAM_INT );
+		$this->m_loadAllGameTypes->bindValue( ':game_id', $this->m_match->getGameId( ), PDO::PARAM_INT );
 
 		$sql_options_id = 'SELECT typeoption_name AS name, typeoption_value AS value FROM a3o_typeoptions'
 		. ' WHERE typeoption_type = :type_id;';
@@ -73,7 +74,7 @@ class GameTypePDOFactory implements IFactory
 	 */
 	protected function createObject( array $data )
 	{
-		return new GameType( $data );
+		return new GameType( $this->m_match, $data );
 	}
 	
 	/** Creates a type object from key
@@ -139,75 +140,20 @@ class GameTypePDOFactory implements IFactory
 	}
 }
 
-/** Implementation of the Registry pattern. Holds key => value
- * pairs where the key is a string (name) and the value is possibly
- * any GameType for a specific game.
- * 
- * @author Daniel Baulig
- * @see MatchZoneRegistry
- * @see BaseRegistry
- */
-class GameTypeRegistry extends BaseRegistry
-{
-	private static $instance = null;
-
-	/** Sets the registry up.
-	 * 
-	 * If the registry was initialized already it throws an Exception.
-	 * 
-	 * @param IFactory $factory
-	 * @throws Exception
-	 */
-	public static function initializeRegistry( IFactory $factory )
-	{
-		if ( self::$instance !== null )
-		{
-			throw new Exception('Registry already initialized.');
-		}
-		self::$instance = new GameTypeRegistry( $factory );
-	}
-
-	/** Returns the instance of the registry
-	 * 
-	 * Throws an exception if the registry is not yet initialized.
-	 * 
-	 * @throws Exception
-	 * @return GameTypeRegistry
-	 */
-	public static function getInstance( )
-	{
-		if ( self::$instance === null )
-		{
-			throw new Exception('Registry must be initialized first.');
-		}
-		return self::$instance;
-	}
-	/** Returns the type referenced by $key
-	 * 
-	 * Can possibly throw DomainException if $key does not
-	 * reference a valid type.
-	 * 
-	 * @param string $key
-	 * @throws DomainException
-	 */
-	public static function getType( $key )
-	{
-		return self::$instance->getElement( $key );
-	}
-}
-
 class GameType
 {
 	protected $m_data;
+	protected $m_state;
 
 	const NAME = 'name';
 	const OPTIONS = 'options';
 	const OPTION_NAME = 'name';
 	const OPTION_VALUE = 'value';
 
-	public function __construct( array $data )
+	public function __construct( MatchState $state, array $data )
 	{
 		$this->m_data = $data;
+		$this->m_state = $state;
 	}
 
 	protected function getOption( $name )

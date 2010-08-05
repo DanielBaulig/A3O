@@ -9,6 +9,7 @@
 class GameAlliancePDOFactory implements IFactory
 {
 	protected $m_pdo;
+	protected $m_match;
 	protected $m_loadSingleAlliance;
 	protected $m_loadSingleAllianceNations;
 	protected $m_loadAllGameAliances;
@@ -18,15 +19,16 @@ class GameAlliancePDOFactory implements IFactory
 	 * @param PDO $pdo
 	 * @param int $game_id
 	 */
-	public function __construct( PDO $pdo, $game_id )
+	public function __construct( PDO $pdo, MatchState $match )
 	{
 		$this->m_pdo = $pdo;
+		$this->m_match = $match;
 		
 		$sql_alliances = 
 			'SELECT a.alliance_id AS id, a.alliance_name AS name FROM a3o_alliances AS a WHERE a.alliance_game = :game_id;';
 		
 		$this->m_loadAllGameAliances = $this->m_pdo->prepare( $sql_alliances );
-		$this->m_loadAllGameAliances->bindValue( ':game_id', $game_id );
+		$this->m_loadAllGameAliances->bindValue( ':game_id', $this->m_match->getGameId( ) );
 		
 		
 		$sql_alliance_nations =
@@ -41,7 +43,7 @@ class GameAlliancePDOFactory implements IFactory
 			. ' a.alliance_game = :game_id AND a.alliance_name = :alliance LIMIT 1;';
 			
 		$this->m_loadSingleAlliance = $this->m_pdo->prepare( $sql_alliance );
-		$this->m_loadSingleAlliance->bindValue( ':game_id', $game_id );
+		$this->m_loadSingleAlliance->bindValue( ':game_id', $this->m_match->getGameId( ) );
 	}	
 	
 	/** Loads all alliances from the database, creates GameAlliance from them and returns them in an array
@@ -59,7 +61,7 @@ class GameAlliancePDOFactory implements IFactory
 		{
 			$alliance[GameAlliance::NATIONS] = $this->loadNations( $alliance['id'] );
 			unset( $alliance['id'] );
-			$alliances[$alliance[GameAlliance::NAME]] = new GameAlliance( $alliance );
+			$alliances[$alliance[GameAlliance::NAME]] = new GameAlliance( $this->m_match, $alliance );
 		}
 		
 		return $alliances;
@@ -103,48 +105,12 @@ class GameAlliancePDOFactory implements IFactory
 			$alliance[GameAlliance::NATIONS] = $this->loadNations( $alliance['id'] );
 			unset( $alliance['id'] );
 
-			return new GameAlliance( $alliance );
+			return new GameAlliance( $this->m_match, $alliance );
 		}
 		else
 		{
 			throw new DomainException( 'Specified alliance ' . $key . ' not valid.' );
 		}
-	}
-}
-
-/** Implements the Registry pattern and the Singleton creational pattern.
- * Is basicly a key => value store where key is a string (name) and value
- * are possibly all GameAlliance objects for a single game.
- * 
- * @author Daniel Baulig
- * @see BaseRegistry
- * @see MatchZoneRegistry
- */
-class GameAllianceRegistry extends BaseRegistry
-{
-	private static $instance = null;
-	
-	public static function initializeRegistry( IFactory $factory )
-	{
-		if ( self::$instance !== null )
-		{
-			throw new Exception( 'Registry already initialized.' );
-		}
-		self::$instance = new GameAllianceRegistry( $factory );
-	}
-	
-	public static function getInstance( )
-	{
-		if ( self::$instance === null )
-		{
-			throw new Exception( 'Registry must be initialized first.' );
-		}
-		return self::$instance;
-	}
-	
-	public static function getAlliance( $key )
-	{
-		return self::$instance->getElement( $key );
 	}
 }
 
@@ -155,13 +121,15 @@ class GameAllianceRegistry extends BaseRegistry
 class GameAlliance
 {
 	protected $m_data;
+	protected $m_state;
 	
 	const NAME = 'name';
 	const NATIONS = 'nations';
 	
-	public function __construct( $data )
+	public function __construct( MatchState $state, $data )
 	{
 		$this->m_data = $data;
+		$this->m_state = $state;
 	}
 	
 	public function hasMember( $nation )

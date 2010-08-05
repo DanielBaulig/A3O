@@ -9,6 +9,7 @@
 class MatchZonePDOFactory implements IFactory
 {
 	private $m_pdo;
+	protected $m_match;
 	
 	private $m_loadBaseSingleGameZone;
 	private $m_loadConnectionsSingleGameZone;
@@ -23,9 +24,10 @@ class MatchZonePDOFactory implements IFactory
 	 * @param PDO $pdo
 	 * @param int $match_id
 	 */
-	public function __construct( PDO $pdo, $match_id )
+	public function __construct( PDO $pdo, MatchState $match )
 	{
 		$this->m_pdo = $pdo;
+		$this->m_match = $match;
 		
 		$base_sql = 		
 			'SELECT z.zone_id AS id, bz.basezone_name AS name, n.nation_name AS owner'
@@ -35,7 +37,7 @@ class MatchZonePDOFactory implements IFactory
 			. ' AND z.zone_owner = n.nation_id WHERE z.zone_match = :match_id AND bz.basezone_name = :zone LIMIT 1;'; 
 						
 		$this->m_loadBaseSingleGameZone = $this->m_pdo->prepare( $base_sql );	
-		$this->m_loadBaseSingleGameZone->bindValue( ':match_id', $match_id, PDO::PARAM_INT );
+		$this->m_loadBaseSingleGameZone->bindValue( ':match_id', $this->m_match->getMatchId( ), PDO::PARAM_INT );
 
 		
 		$connections_sql =
@@ -70,7 +72,7 @@ class MatchZonePDOFactory implements IFactory
 			. ' AND z.zone_owner = n.nation_id WHERE z.zone_match = :match_id;';
 			
 		$this->m_loadBaseAllGameZones = $this->m_pdo->prepare( $all_base_sql );
-		$this->m_loadBaseAllGameZones->bindValue( 'match_id', $match_id, PDO::PARAM_INT );
+		$this->m_loadBaseAllGameZones->bindValue( 'match_id', $this->m_match->getMatchId( ), PDO::PARAM_INT );
 	}
 	
 	/** Loads all connections belonging to to $zone_id and returns them as an array.
@@ -146,7 +148,7 @@ class MatchZonePDOFactory implements IFactory
 	
 	protected function createObject( array $data )
 	{
-		return new MatchZone( $data );
+		return new MatchZone( $this->m_match, $data );
 	}
 	
 	/** Creates a single MatchZone object from key and returns it.
@@ -303,77 +305,6 @@ class MatchZonePDOStorer extends Storer
 	}
 }
 
-/** MatchZoneRegistry is a implementation of the Registry pattern and stores
- * key => value pairs where keys are strings (names) and the values are possibly
- * all MatchZone objects of a specific match.
- * 
- * The registry is able to either precache all the match's zones by calling the
- * precacheElements method or load zones ad-hoc from the database as they are
- * requested.
- * The registry uses a factory implementing the IFactory interface that it gets 
- * passed in the constructor to construct the MatchZone objects.
- * 
- * Note that it also implements the Signleton pattern and as such cannot be 
- * instanciated directly, but only by calling the initializeRegistry class
- * method.
- * After the Registry is initialized you can either use it's getInstance class
- * method to directly access the registry object or have the getZone class method
- * marshall your requests for you.
- * 
- * @author Daniel Baulig
- * @see BaseRegistry
- */
-class MatchZoneRegistry extends BaseRegistry
-{
-	private static $instance = null;
-	
-	/** Initializes the registry
-	 * 
-	 * Throws an exception if the registry is already initialized.
-	 * 
-	 * @param IFactory $factory
-	 * @throws Exception
-	 */
-	public static function initializeRegistry( IFactory $factory )
-	{
-		if ( self::$instance === null )
-		{
-			self::$instance = new MatchZoneRegistry( $factory );
-		} 
-		else
-		{
-			throw new Exception('Registry already initialized.');
-		}
-	}
-	
-	/** Returns an instance of the registry
-	 * 
-	 * Throws an exception if the registry is not initialized yet.
-	 * 
-	 * @throws Exception
-	 */
-	public static function getInstance( )
-	{
-		if ( self::$instance === null )
-		{
-			throw new Exception('Registry must be initialized first.');
-		}
-		return self::$instance;
-	}
-	
-	/** Returns the element specified by $key from the registry.
-	 * 
-	 * Note that this method does not check if the registry was already initialized.
-	 * You are responsible to make sure the registry is ready and setup when calling
-	 * this method.
-	 * 
-	 * @param mixed $key
-	 */
-	public static function getZone( $key )
-	{
-		return self::$instance->getElement( $key );
-	}
-}
 
 class MatchZone implements IStoreable
 {
@@ -393,6 +324,8 @@ class MatchZone implements IStoreable
 	 * @access protected
 	 */
 	protected $m_data;
+	
+	protected $m_state;
 	
 	const NAME = 'name';
 	const PIECES = 'pieces';
@@ -432,7 +365,7 @@ class MatchZone implements IStoreable
 	{
 		if ( $this->m_data[self::OWNER] )
 		{
-			return GameNationRegistry::getNation( $this->m_data[self::OWNER] )->isAllyOf( $nation );
+			return $this->m_state->getNation( $this->m_data[self::OWNER] )->isAllyOf( $nation );
 		}
 		else 
 		{
@@ -447,7 +380,7 @@ class MatchZone implements IStoreable
 	 */
 	public function isEnemyPresentOf( $nation )
 	{
-		$nation = GameNationRegistry::getNation( $nation );
+		$nation = $this->m_state->getNation( $nation );
 		foreach( $this->m_data[self::PIECES] as $stackOwner => $nationStack )
 		{
 			if ( !$nation->isAllyOf( $stackOwner ) )
@@ -481,8 +414,9 @@ class MatchZone implements IStoreable
 		$storer->takeData( $this->m_data );
 	}
 	
-	public function __construct( array $data )
+	public function __construct( MatchState $state, array $data )
 	{
 		$this->m_data = $data;
+		$this->m_state = $state;
 	}
 }

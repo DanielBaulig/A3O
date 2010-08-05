@@ -45,17 +45,9 @@ class BaseRegistry
 	 * 
 	 * @param IFactory $factory
 	 */
-	protected function __construct( IFactory $factory )
+	public function __construct( IFactory $factory )
 	{
 		$this->m_factory = $factory;
-	}
-	
-	public function swapFactory( IFactory $factory )
-	{
-		$oldFactory = $this->m_factory;
-		$this->m_elements = array( );
-		$this->m_factory = $factory;
-		return $oldFactory;
 	}
 	
 	/** Returns an element contained in the registry.

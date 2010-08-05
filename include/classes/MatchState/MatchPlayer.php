@@ -2,14 +2,16 @@
 class MatchPlayerPDOFactory implements IFactory
 {
 	protected $m_pdo;
+	protected $m_match;
 	
 	protected $m_loadSingleMatchPlayer;
 	protected $m_loadSingleMatchPlayerOptions;
 	protected $m_loadAllMatchPlayers;
 	
-	public function __construct( PDO $pdo, $match_id )
+	public function __construct( PDO $pdo, MatchState $match )
 	{
 		$this->m_pdo = $pdo;
+		$this->m_match = $match;
 		
 		$sql_single =
 			'SELECT p.player_id AS id, n.nation_name AS nation, p.player_user AS user FROM a3o_players AS p'
@@ -17,7 +19,7 @@ class MatchPlayerPDOFactory implements IFactory
 			. ' AND n.nation_name = :nation LIMIT 1;';
 			
 		$this->m_loadSingleMatchPlayer = $this->m_pdo->prepare( $sql_single );
-		$this->m_loadSingleMatchPlayer->bindValue( ':match_id' , $match_id, PDO::PARAM_INT );
+		$this->m_loadSingleMatchPlayer->bindValue( ':match_id' , $this->m_match->getMatchId( ), PDO::PARAM_INT );
 			
 		$sql_options =
 			'SELECT o.playeroption_name AS name, o.playeroption_value AS value FROM a3o_playeroptions AS o'
@@ -30,12 +32,12 @@ class MatchPlayerPDOFactory implements IFactory
 			. ' INNER JOIN a3o_nations AS n ON n.nation_id = p.player_nation WHERE p.player_match = :match_id;';
 			
 		$this->m_loadAllMatchPlayers = $this->m_pdo->prepare( $sql_all );
-		$this->m_loadAllMatchPlayers->bindValue( ':match_id', $match_id, PDO::PARAM_INT );
+		$this->m_loadAllMatchPlayers->bindValue( ':match_id', $this->m_match->getMatchId( ), PDO::PARAM_INT );
 	}
 	
 	protected function createObject( array $data )
 	{
-		return new MatchPlayer( $data );
+		return new MatchPlayer( $this->m_match, $data );
 	}
 	
 	protected function loadOptions( $player_id )
@@ -168,54 +170,20 @@ class MatchPlayerPDOStorer extends Storer
 	}
 }
 
-class MatchPlayerRegistry extends BaseRegistry
-{
-	private static $instance = null;
-	private $m_factory;
-	
-	public static function getInstance( )
-	{
-		if ( self::$instance === null )
-		{
-			throw new Exception( 'Registry must be intialized first.' );
-		}
-		return self::$instance;
-	}
-	
-	public static function initializeRegistry( IFactory $factory )
-	{
-		if( self::$instance !== null )
-		{
-			throw new Exception( 'Registry already initialized.' );
-		}
-		self::$instance = new MatchPlayerRegistry( $factory );
-	}
-	
-	public function swapFactory( IFactory $factory )
-	{
-		$old = $this->m_factory;
-		$this->m_factory = $factory;
-		$this->m_elements = array( );
-		return $old;
-	}
-	
-	public static function getPlayer( $nation )
-	{
-		return self::$instance->getElement( $nation );
-	}
-}
 
 class MatchPlayer implements IStoreable
 {
 	protected $m_data;
+	protected $m_state;
 	
 	const NATION = 'nation';
 	const USER = 'user';
 	const OPTIONS = 'options';
 	
-	public function __construct( array $data )
+	public function __construct( MatchState $m_state, array $data )
 	{
 		$this->m_data = $data;
+		$this->m_state = $m_state;
 	}
 	
 	public function isUser( $user )

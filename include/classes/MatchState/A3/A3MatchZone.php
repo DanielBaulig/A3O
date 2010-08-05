@@ -4,7 +4,7 @@ class A3MatchZonePDOFactory extends MatchZonePDOFactory
 {
 	protected function createObject( array $data )
 	{
-		return new A3MatchZone( $data );
+		return new A3MatchZone( $this->m_match, $data );
 	}
 }
 
@@ -21,7 +21,7 @@ class A3MatchZone extends MatchZone
 	public function hasConnection( $zone )
 	{
 		return parent::hasConnection( $zone ) || 
-			array_key_exists( $this->m_data[self::NAME], MatchZoneRegistry::getZone( $zone )->m_data[self::CONNECTIONS] );
+			array_key_exists( $this->m_data[self::NAME], $this->m_state->getZone( $zone )->m_data[self::CONNECTIONS] );
 	}
 	
 	public function isImpassible( ) 
@@ -46,8 +46,8 @@ class A3MatchZone extends MatchZone
 	 */
 	public function isHostileTo( $nation, $type )
 	{
-		$nation = GameNationRegistry::getNation( $nation );
-		$type = GameTypeRegistry::getType( $type );
+		$nation = $this->m_state->getNation( $nation );
+		$type = $this->m_state->getType( $type );
 		foreach( $this->m_data[self::PIECES] as $stackOwner => $stack )
 		{
 			if ( !$nation->isAllyOf( $stackOwner ) )
@@ -56,7 +56,7 @@ class A3MatchZone extends MatchZone
 				{
 					if( $count > 0 )
 					{
-						$stack_type = GameTypeRegistry::getType( $stack_type );
+						$stack_type = $this->m_state->getType( $stack_type );
 						if ( !$type->isSubmerged( ) || $stack_type->isDetector( ) )
 						{
 							if ( ! ( $stack_type->isDefenseless( ) || $stack_type->isSubmerged( ) ) )

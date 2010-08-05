@@ -4,7 +4,7 @@ class A3GameTypePDOFactory extends GameTypePDOFactory
 {
 	protected function createObject( array $data )
 	{
-		return new A3GameType( $data );
+		return new A3GameType( $this->m_match, $data );
 	}
 }
 
@@ -52,11 +52,11 @@ class A3GameType extends GameType
 		end( $path );
 		$last = key( $path );
 		
-		$currentZone = MatchZoneRegistry::getZone( reset( $path ) );
+		$currentZone = $this->m_state->getZone( reset( $path ) );
 		
 		while( next( $path ) && $currentZone->hasConnection( current( $path ) ) )
 		{
-			$currentZone = MatchZoneRegistry::getZone( current( $path ) );
+			$currentZone = $this->m_state->getZone( current( $path ) );
 			$isLastZone = key( $path ) === $last;
 
 			// impassible

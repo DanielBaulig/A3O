@@ -12,6 +12,9 @@ class GameNationPDOFactory implements IFactory
 	protected $m_loadSingleGameNation;
 	protected $m_loadAlliancesSingleNation;
 	
+	protected $m_pdo;
+	protected $m_match;
+	
 	/** Loads all alliances belonging to a nation specified by it's id.
 	 * 
 	 * @param int $nation_id
@@ -45,7 +48,7 @@ class GameNationPDOFactory implements IFactory
 		{
 			$nation[GameNation::ALLIANCES] = $this->loadAlliances( $nation['id'] );
 			unset( $nation['id'] );
-			$nations[ $nation[GameNation::NAME] ] = new GameNation( $nation );
+			$nations[ $nation[GameNation::NAME] ] = new GameNation( $this->m_match, $nation );
 		}
 		return $nations;
 	}
@@ -69,7 +72,7 @@ class GameNationPDOFactory implements IFactory
 		{
 			$nation[GameNation::ALLIANCES] = $this->loadAlliances( $nation['id'] );
 			unset( $nation['id'] );
-			return new GameNation( $nation );
+			return new GameNation( $this->m_match, $nation );
 		}
 		else
 		{
@@ -82,15 +85,16 @@ class GameNationPDOFactory implements IFactory
 	 * @param PDO $pdo
 	 * @param int $game_id
 	 */
-	public function __construct( PDO $pdo, $game_id )
+	public function __construct( PDO $pdo, MatchState $match )
 	{
 		$this->m_pdo = $pdo;
+		$this->m_match = $match;
 		
 		$sql_nations = 'SELECT n.nation_id AS id, n.nation_name AS name FROM a3o_nations AS n ' 
 			. 'WHERE n.nation_game = :game_id;';
 		
 		$this->m_loadAllGameNations = $this->m_pdo->prepare( $sql_nations );
-		$this->m_loadAllGameNations->bindValue( ':game_id', $game_id, PDO::PARAM_INT );
+		$this->m_loadAllGameNations->bindValue( ':game_id', $this->m_match->getGameId( ), PDO::PARAM_INT );
 		
 		$sql_nation = 'SELECT n.nation_id AS id, n.nation_name AS name FROM a3o_nations AS n'
 			. ' WHERE n.nation_name = :nation LIMIT 1;';
@@ -106,40 +110,6 @@ class GameNationPDOFactory implements IFactory
 		
 	}
 }
-/** The GameNationRegistry implements the Registry design pattern and
- * the Singleton creational pattern. It is a key => value store where key
- * is a string (name) and value possibly all GameNation objects associated
- * with a specific game.
- * 
- * @author Daniel Baulig
- * @see BaseRegistry
- * @see MatchZoneRegistry::
- */
-class GameNationRegistry extends BaseRegistry
-{
-	private static $instance = null;
-
-	public static function initializeRegistry( IFactory $factory )
-	{
-		if ( self::$instance !== null )
-		{
-			throw new Exception( 'GameNationRegistry already initialized.' );
-		}
-		self::$instance = new GameNationRegistry( $factory );
-	}
-	public static function getInstance( )
-	{
-		if ( self::$instance === null )
-		{
-			throw new Exception('GameNationRegistry not initialized.');
-		}
-		return self::$instance;
-	}
-	public static function getNation( $key )
-	{
-		return self::$instance->getElement( $key );
-	}
-}
 
 /** Represents a nation within a specific game
  * 
@@ -148,13 +118,15 @@ class GameNationRegistry extends BaseRegistry
 class GameNation
 {
 	protected $m_data;
+	protected $m_state;
 	
 	const NAME = 'name';
 	const ALLIANCES = 'alliances';
 	
-	public function __construct( array $data )
+	public function __construct( MatchState $state, array $data )
 	{
 		$this->m_data = $data;
+		$this->m_state = $state;
 	}
 	
 	/** Returns true if this nation is an ally of $nation
@@ -164,7 +136,7 @@ class GameNation
 	 */
 	public function isAllyOf( $nation )
 	{
-		$nation =  GameNationRegistry::getNation( $nation );
+		$nation =  $this->m_state->getNation( $nation );
 		foreach( $this->m_data[GameNation::ALLIANCES] as $alliance => $ignore )
 		{
 			if ( $nation->isInAlliance( $alliance ) )
