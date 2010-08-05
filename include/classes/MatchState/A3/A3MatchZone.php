@@ -35,7 +35,7 @@ class A3MatchZone extends MatchZone
 	}
 	
 	/** Similar to {@link isEnemyPresentOf} it checks if enemies are present,
-	 * but take into account specific options of those possible enemies that would
+	 * but takes into account specific options of those possible enemies that would
 	 * let pieces of $nation pass through the territory nevertheless
 	 *
 	 * If $submerged is true only detectors count as hostile
@@ -44,21 +44,22 @@ class A3MatchZone extends MatchZone
 	 * @param boolean $submerged
 	 * @return boolean
 	 */
-	public function isHostileTo( $nation, $submerged = false )
+	public function isHostileTo( $nation, $type )
 	{
 		$nation = GameNationRegistry::getNation( $nation );
+		$type = GameTypeRegistry::getType( $type );
 		foreach( $this->m_data[self::PIECES] as $stackOwner => $stack )
 		{
 			if ( !$nation->isAllyOf( $stackOwner ) )
 			{
-				foreach( $stack as $type => $count )
+				foreach( $stack as $stack_type => $count )
 				{
 					if( $count > 0 )
 					{
-						$type = GameTypeRegistry::getType( $type );
-						if ( !$submerged || $type->isDetector( ) )
+						$stack_type = GameTypeRegistry::getType( $stack_type );
+						if ( !$type->isSubmerged( ) || $stack_type->isDetector( ) )
 						{
-							if ( ! ( $type->isDefenseless( ) || $type->isSubmerged( ) ) )
+							if ( ! ( $stack_type->isDefenseless( ) || $stack_type->isSubmerged( ) ) )
 							{							
 								return true;	
 							}							

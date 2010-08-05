@@ -72,7 +72,7 @@ class A3GameType extends GameType
 				if ( $this->isNaval( ) )
 				{
 					// is this water zone hostile?
-					if ( $currentZone->isHostileTo( $nation, $this->isSubmerged( ) ) )
+					if ( $currentZone->isHostileTo( $nation, $this->m_data[A3GameType::NAME] ) )
 					{
 						// aint this the final move in a combat move?
 						if ( !( isLastZone && $combatMovement ) )
@@ -86,7 +86,7 @@ class A3GameType extends GameType
 				{
 					if ( $isLastZone )
 					{
-						if ( $currentZone->isHostileTo( $nation, $this->isSubmerged( ) ) )
+						if ( $currentZone->isHostileTo( $nation, $this->m_data[A3GameType::NAME] ) )
 						{
 							if ( !$combatMovement )
 							{
