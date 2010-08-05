@@ -372,6 +372,23 @@ class MatchZone implements IStoreable
 			return true;
 		}
 	}
+	/** Moves $count $type pieces of nation $nation from this zone to $zone
+	 * 
+	 * Note that there is no checking for overflow, validity or similar. So moving
+	 * negative numbers or more pieces than there are present IS possible.
+	 * In fact this is used by some of the Changes to implement behaviour like
+	 * reversing the change, creating pieces or removing them. 
+	 * 
+	 * @param string $zone
+	 * @param string $nation
+	 * @param string $type
+	 * @param int $count
+	 */
+	public function movePiecesTo( $zone, $nation, $type, $count )
+	{
+		$this->m_data[self::PIECES][$nation][$type] -= $count;
+		$this->m_match->getZone( $zone )->m_data[self::PIECES][$nation][$type] += $count;
+	}
 	
 	/** Checks if a piece of an enemy of $nation is present
 	 * 
