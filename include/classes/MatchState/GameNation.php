@@ -48,9 +48,14 @@ class GameNationPDOFactory implements IFactory
 		{
 			$nation[GameNation::ALLIANCES] = $this->loadAlliances( $nation['id'] );
 			unset( $nation['id'] );
-			$nations[ $nation[GameNation::NAME] ] = new GameNation( $this->m_match, $nation );
+			$nations[ $nation[GameNation::NAME] ] = $this->createObject( $nation );
 		}
 		return $nations;
+	}
+	
+	protected function createObject( array $data )
+	{
+		return new GameNation( $this->m_match, $data);
 	}
 	
 	/** Loads a single nation for this game specified by $key and returns it as GameNation object.
@@ -72,7 +77,7 @@ class GameNationPDOFactory implements IFactory
 		{
 			$nation[GameNation::ALLIANCES] = $this->loadAlliances( $nation['id'] );
 			unset( $nation['id'] );
-			return new GameNation( $this->m_match, $nation );
+			return $this->createObject( $nation );
 		}
 		else
 		{

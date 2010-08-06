@@ -203,6 +203,11 @@ class MatchPlayer implements IStoreable
 		}
 	}
 	
+	protected function setOption( $name, $value )
+	{
+		return $this->m_data[self::OPTIONS][$name] = $value;
+	}
+	
 	public function storeData( Storer $storer )
 	{
 		$storer->takeData( $this->m_data );

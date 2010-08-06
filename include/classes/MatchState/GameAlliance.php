@@ -46,6 +46,11 @@ class GameAlliancePDOFactory implements IFactory
 		$this->m_loadSingleAlliance->bindValue( ':game_id', $this->m_match->getGameId( ) );
 	}	
 	
+	protected function createObject( array $data )
+	{
+		return new GameAlliance( $this->m_match, $data );
+	}
+	
 	/** Loads all alliances from the database, creates GameAlliance from them and returns them in an array
 	 * 
 	 * (non-PHPdoc)
@@ -61,7 +66,7 @@ class GameAlliancePDOFactory implements IFactory
 		{
 			$alliance[GameAlliance::NATIONS] = $this->loadNations( $alliance['id'] );
 			unset( $alliance['id'] );
-			$alliances[$alliance[GameAlliance::NAME]] = new GameAlliance( $this->m_match, $alliance );
+			$alliances[$alliance[GameAlliance::NAME]] = $this->createObject( $alliance );
 		}
 		
 		return $alliances;
@@ -105,7 +110,7 @@ class GameAlliancePDOFactory implements IFactory
 			$alliance[GameAlliance::NATIONS] = $this->loadNations( $alliance['id'] );
 			unset( $alliance['id'] );
 
-			return new GameAlliance( $this->m_match, $alliance );
+			return $this->createObject( $alliance );
 		}
 		else
 		{
