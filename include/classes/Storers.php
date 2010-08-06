@@ -38,8 +38,8 @@ class A3StorerPDOFactory implements IStorerFactory
 					return new MatchPlayerPDOStorer( $this->m_pdo, $this->m_match, $storeable );
 			case 'MatchZone':
 					return new MatchZonePDOStorer( $this->m_pdo, $this->m_match, $storeable );
-			case 'A3MatchState':
-					return new MatchStatePDOStorer( $this->m_pdo, $this->m_match, $storeable );
+			case 'A3MatchBoard':
+					return new MatchBoardPDOStorer( $this->m_pdo, $this->m_match, $storeable );
 			default:
 				throw new InvalidArgumentException( 'Unknown IStoreable implementation. You are propably using the wrong StorerFactory.' );
 		}

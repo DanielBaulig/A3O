@@ -24,7 +24,7 @@ class MatchZonePDOFactory implements IFactory
 	 * @param PDO $pdo
 	 * @param int $match_id
 	 */
-	public function __construct( PDO $pdo, MatchState $match )
+	public function __construct( PDO $pdo, MatchBoard $match )
 	{
 		$this->m_pdo = $pdo;
 		$this->m_match = $match;
@@ -431,7 +431,7 @@ class MatchZone implements IStoreable
 		$storer->takeData( $this->m_data );
 	}
 	
-	public function __construct( MatchState $state, array $data )
+	public function __construct( MatchBoard $state, array $data )
 	{
 		$this->m_data = $data;
 		$this->m_state = $state;

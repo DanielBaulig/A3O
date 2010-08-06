@@ -42,7 +42,7 @@ class GameTypePDOFactory implements IFactory
 	 * @param PDO $pdo
 	 * @param int $game
 	 */
-	public function __construct( PDO $pdo, MatchState $match )
+	public function __construct( PDO $pdo, MatchBoard $match )
 	{
 		//TODO: Refactor SQL to not get options by name, but to get id from a single option
 		// this may be of lower performance but is the better design approach imo
@@ -150,7 +150,7 @@ class GameType
 	const OPTION_NAME = 'name';
 	const OPTION_VALUE = 'value';
 
-	public function __construct( MatchState $state, array $data )
+	public function __construct( MatchBoard $state, array $data )
 	{
 		$this->m_data = $data;
 		$this->m_state = $state;

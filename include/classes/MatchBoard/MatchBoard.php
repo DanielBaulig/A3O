@@ -8,7 +8,7 @@ require_once dirname(__FILE__) . '/GameNation.php';
 require_once dirname(__FILE__) . '/GameAlliance.php';
 require_once dirname(__FILE__) . '/MatchPlayer.php';
 
-abstract class MatchState
+abstract class MatchBoard
 {
 	protected $m_zoneRegistry;
 	protected $m_playerRegistry;
@@ -20,11 +20,6 @@ abstract class MatchState
 	protected $m_gameId;
 	
 	abstract public function __construct( $game_id, $match_id );
-	
-	public function apply( IChange $change )
-	{
-		$change->applyTo( $this );
-	}
 	
 	public function getMatchId( )
 	{

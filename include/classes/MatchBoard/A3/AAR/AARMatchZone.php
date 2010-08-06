@@ -8,7 +8,7 @@ class AARMatchZonePDOFactory extends A3MatchZonePDOFactory
 	
 	/** Supports type mdofication for teched units
 	 * (non-PHPdoc)
-	 * @see include/classes/MatchState/MatchZonePDOFactory::loadPieces()
+	 * @see include/classes/MatchBoard/MatchZonePDOFactory::loadPieces()
 	 */
 	protected function loadPieces( $zone_id )
 	{

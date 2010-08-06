@@ -8,7 +8,7 @@ class MatchPlayerPDOFactory implements IFactory
 	protected $m_loadSingleMatchPlayerOptions;
 	protected $m_loadAllMatchPlayers;
 	
-	public function __construct( PDO $pdo, MatchState $match )
+	public function __construct( PDO $pdo, MatchBoard $match )
 	{
 		$this->m_pdo = $pdo;
 		$this->m_match = $match;
@@ -180,7 +180,7 @@ class MatchPlayer implements IStoreable
 	const USER = 'user';
 	const OPTIONS = 'options';
 	
-	public function __construct( MatchState $m_state, array $data )
+	public function __construct( MatchBoard $m_state, array $data )
 	{
 		$this->m_data = $data;
 		$this->m_state = $m_state;

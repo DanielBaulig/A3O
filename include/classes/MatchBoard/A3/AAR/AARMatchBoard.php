@@ -1,10 +1,10 @@
 <?php
-require_once dirname(__FILE__) . '/../A3MatchState.php';
+require_once dirname(__FILE__) . '/../A3MatchBoard.php';
 require_once dirname(__FILE__) . '/AARMatchPlayer.php';
 require_once dirname(__FILE__) . '/AARMatchZone.php';
 require_once dirname(__FILE__) . '/AARGameType.php';
 
-class AARPDOMatchState extends A3PDOMatchState
+class AARPDOMatchBoard extends A3PDOMatchBoard
 {
 	public function __construct(PDO $pdo, $game_id, $match_id)
 	{

@@ -8,12 +8,12 @@ class AARGameTypePDOFactory extends A3GameTypePDOFactory
 	 * modification.
 	 * 
 	 * (non-PHPdoc)
-	 * @see include/classes/MatchState/A3/A3GameTypePDOFactory::createObject()
+	 * @see include/classes/MatchBoard/A3/A3GameTypePDOFactory::createObject()
 	 */
 	protected function createObject( array $data )
 	{
 		// apply modifications
-		$data = AARPDOMatchState::applyModification( $data, $this->m_modification );
+		$data = AARPDOMatchBoard::applyModification( $data, $this->m_modification );
 		// reset modifications, so next type will not be affected by them
 		$this->m_modification = array( );
 		return new AARGameType( $this->m_match, $data );
@@ -29,7 +29,7 @@ class AARGameTypePDOFactory extends A3GameTypePDOFactory
 	 */
 	public function addModification( array $modification = array( ) )
 	{
-		$this->m_modification = AARPDOMatchState::applyModification( $this->m_modification, $modification );
+		$this->m_modification = AARPDOMatchBoard::applyModification( $this->m_modification, $modification );
 	}
 }
 
