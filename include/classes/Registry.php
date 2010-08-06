@@ -31,12 +31,12 @@ class BaseRegistry
 	 * 
 	 * @var IFactory
 	 */
-	private $m_factory;
+	protected $m_factory;
 	/** The elements contained in the registry.
 	 * 
 	 * @var array
 	 */
-	private $m_elements = array( );
+	protected $m_elements = array( );
 	
 	/** Instanciates the Registry.
 	 * 
@@ -48,6 +48,11 @@ class BaseRegistry
 	public function __construct( IFactory $factory )
 	{
 		$this->m_factory = $factory;
+	}
+	
+	public function clearElements( )
+	{
+		$this->m_elements = array( );
 	}
 	
 	/** Returns an element contained in the registry.

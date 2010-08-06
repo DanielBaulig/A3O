@@ -8,15 +8,15 @@
  */
 class MatchZonePDOFactory implements IFactory
 {
-	private $m_pdo;
+	protected $m_pdo;
 	protected $m_match;
 	
-	private $m_loadBaseSingleGameZone;
-	private $m_loadConnectionsSingleGameZone;
-	private $m_loadPiecesSingleGameZone;
-	private $m_loadOptionsSingleMatchZone;
+	protected $m_loadBaseSingleGameZone;
+	protected $m_loadConnectionsSingleGameZone;
+	protected $m_loadPiecesSingleGameZone;
+	protected $m_loadOptionsSingleMatchZone;
 	
-	private $m_loadBaseAllGameZones;
+	protected $m_loadBaseAllGameZones;
 
 	/** Constructs the MatchZone factory, setting up the queries
 	 * and the PDOStatement objects.

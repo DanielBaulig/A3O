@@ -1,20 +1,23 @@
 <?php
 require_once dirname(__FILE__) . '/../A3MatchState.php';
+require_once dirname(__FILE__) . '/AARMatchPlayer.php';
+require_once dirname(__FILE__) . '/AARMatchZone.php';
+require_once dirname(__FILE__) . '/AARGameType.php';
 
-class A3PDOMatchState extends MatchState
+class AARPDOMatchState extends A3PDOMatchState
 {
 	public function __construct(PDO $pdo, $game_id, $match_id)
 	{
 		$this->m_matchId = $match_id;
 		$this->m_gameId = $game_id;
 		
-		$this->m_zoneRegistry = new BaseRegistry( new A3MatchZonePDOFactory($pdo, $this) );
+		$this->m_zoneRegistry = new BaseRegistry( new AARMatchZonePDOFactory($pdo, $this) );
 		$this->m_playerRegistry = new BaseRegistry( new AARMatchPlayerPDOFactory($pdo, $this) );
 		$this->m_nationRegistry = new BaseRegistry( new A3GameNationPDOFactory($pdo, $this) );
 		$this->m_allianceRegistry = new BaseRegistry( new A3GameAlliancePDOFactory($pdo, $this) );
 		
 		// exchange type registry for AAR type registry which supports type modification 
-		$this->m_typeRegistry = new AARGameTypeRegistry( new A3GameTypePDOFactory($pdo, $this) );
+		$this->m_typeRegistry = new AARGameTypeRegistry( new AARGameTypePDOFactory($pdo, $this) );
 	}
 	
 	/** Technology type modifiers are applied to the basetypes if the
@@ -28,7 +31,7 @@ class A3PDOMatchState extends MatchState
 	 * @var array
 	 */
 	private static $m_techTypeModifiers = array(
-		'jetfigter' => array(
+		'jetfighter' => array(
 			GameType::NAME => 'jet_',
 			GameType::OPTIONS => array( 'defense' => +1, 'dodgeaa' => '1' ),
 		),	
@@ -70,28 +73,35 @@ class A3PDOMatchState extends MatchState
 			$data[GameType::NAME] = $modification[GameType::NAME] . $data[GameType::NAME];	
 		}
 		
-		// get each option from the modification
-		foreach( $modification[GameType::OPTIONS] as $key => $value )
+		if ( array_key_exists( GameType::OPTIONS, $modification ) )
 		{
-			// is there an entry in data with the same key?
-			if( array_key_exists( $key, $data[GameType::OPTIONS] ) )
+			// get each option from the modification
+			foreach( $modification[GameType::OPTIONS] as $key => $value )
 			{
-				// if so and the value in modification array is an integer
-				if( is_int( $modification[GameType::OPTIONS][$key] ) )
+				if (! array_key_exists( GameType::OPTIONS, $data ) )
 				{
-					// add it to the value in data
-					$data[GameType::OPTIONS][$key] += $modification[GameType::OPTIONS][$key];
+					$data[GameType::OPTIONS] = array( );
+				}
+				// is there an entry in data with the same key?
+				if( array_key_exists( $key, $data[GameType::OPTIONS] ) )
+				{
+					// if so and the value in modification array is an integer
+					if( is_int( $modification[GameType::OPTIONS][$key] ) )
+					{
+						// add it to the value in data
+						$data[GameType::OPTIONS][$key] += $modification[GameType::OPTIONS][$key];
+					}
+					else 
+					{
+						// else set the value in data to the value in modification
+						$data[GameType::OPTIONS][$key] = $modification[GameType::OPTIONS][$key];
+					}
 				}
 				else 
 				{
-					// else set the value in data to the value in modification
+					// if there was no key in data create it
 					$data[GameType::OPTIONS][$key] = $modification[GameType::OPTIONS][$key];
 				}
-			}
-			else 
-			{
-				// if there was no key in data create it
-				$data[GameType::OPTIONS][$key] = $modification[GameType::OPTIONS][$key];
 			}
 		}
 		return $data;
@@ -107,12 +117,12 @@ class A3PDOMatchState extends MatchState
 	{
 		$modification = array( );
 		$player = $this->getPlayer( $nation );
-		
+
 		// if this is either a bomber or a fighter
-		if ( $basetype == 'bomber' || $bastetype == 'fighter' )
+		if ( $basetype == 'bomber' || $basetype == 'fighter' )
 		{
 			// if its a fighter and we have JetFigters researched
-			if ( $basetype == 'fighter' && $player->hasJetFightersResearched( ) )
+			if ( ($basetype == 'fighter') && $player->hasJetFightersResearched( ) )
 			{
 				// apply jet fighter modifications
 				$modification = self::applyModification( $modification, self::$m_techTypeModifiers['jetfighter'] );

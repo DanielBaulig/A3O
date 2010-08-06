@@ -9,7 +9,18 @@ class AARMatchPlayerPDOFactory extends A3MatchPlayerPDOFactory
 
 class AARMatchPlayer extends A3MatchPlayer
 {
-public function researchJetFighters( )
+	public function hasTechnologyResearched( )
+	{
+		return $this->hasCombinedBombardmentResearched( ) ||
+			$this->hasHeavyBombersResearched( ) ||
+			$this->hasJetFightersResearched( ) ||
+			$this->hasLongRangeAircraftResearched( ) ||
+			$this->hasRocketsResearched( ) ||
+			$this->hasSuperSubsResearched( ) ||
+			$this->hasTechnologyResearched( );
+	}
+	
+	public function researchJetFighters( )
 	{
 		$this->setOption( 'technology_jetfighters' , 1 );
 	}
@@ -40,26 +51,31 @@ public function researchJetFighters( )
 	
 	public function hasJetFightersResearched( )
 	{
-		return $this->getOption( 'technology_jetfighters' );
+		return (boolean) $this->getOption( 'technology_jetfighters' );
+	}
+	
+	public function hasHeavyBombersResearched( )
+	{
+		return (boolean) $this->getOption( 'technology_heavybombers' );
 	}
 	
 	public function hasSuperSubsResearched( )
 	{
-		return $this->getOption( 'technology_supersubs' );
+		return (boolean) $this->getOption( 'technology_supersubs' );
 	}
 	
 	public function hasRocketsResearched( )
 	{
-		return $this->getOption( 'technology_rockets' );
+		return (boolean) $this->getOption( 'technology_rockets' );
 	}
 	
 	public function hasLongRangeAircraftResearched( )
 	{
-		return $this->getOption( 'technlogy_longrangeaircraft');
+		return (boolean) $this->getOption( 'technology_longrangeaircraft');
 	}
 	
 	public function hasCombinedBombardmentResearched( )
 	{
-		return $this->getOption( 'technology_combinedbombardment' );
+		return (boolean) $this->getOption( 'technology_combinedbombardment' );
 	}	
 }

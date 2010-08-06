@@ -36,24 +36,24 @@ abstract class MatchState
 		return $this->m_gameId;
 	}
 	
-	public function getZone( $zone )
+	public function getZone( $zone, $reload = false )
 	{
-		return $this->m_zoneRegistry->getElement( $zone );
+		return $this->m_zoneRegistry->getElement( $zone, $reload );
 	}
-	public function getPlayer( $nation )
+	public function getPlayer( $nation, $reload = false )
 	{
-		return $this->m_playerRegistry->getElement( $nation );
+		return $this->m_playerRegistry->getElement( $nation, $reload );
 	}
-	public function getNation( $nation )
+	public function getNation( $nation, $reload = false )
 	{
-		return $this->m_nationRegistry->getElement( $nation );
+		return $this->m_nationRegistry->getElement( $nation, $reload );
 	}
-	public function getType( $type )
+	public function getType( $type, $reload = false )
 	{
-		return $this->m_typeRegistry->getElement( $type );
+		return $this->m_typeRegistry->getElement( $type, $reload );
 	}
-	public function getAlliance( $alliance )
+	public function getAlliance( $alliance, $reload = false )
 	{
-		return $this->m_allianceRegistry->getElement( $alliance );
+		return $this->m_allianceRegistry->getElement( $alliance, $reload );
 	}
 }
