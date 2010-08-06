@@ -15,6 +15,11 @@ class A3GameType extends GameType
 		return (boolean) $this->getOption( 'blitz' );
 	}
 	
+	public function isBombardCoast( )
+	{
+		return (boolean) $this->getOption( 'bombardcoast' );
+	}
+	
 	public function isNaval( )
 	{
 		return (boolean) $this->getOption( 'naval' );
@@ -23,6 +28,11 @@ class A3GameType extends GameType
 	public function isAir( )
 	{
 		return (boolean) $this->getOption( 'air' );
+	}
+	
+	public function isAntiAir( )
+	{
+		return (boolean) $this->getOption( 'antiair' );
 	}
 	
 	public function isSubmerged( )
