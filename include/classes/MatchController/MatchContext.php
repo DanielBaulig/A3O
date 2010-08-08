@@ -1,5 +1,5 @@
 <?php
-class StateMachine
+class MatchContext
 {
 	private $m_currentController;
 
@@ -8,7 +8,7 @@ class StateMachine
 		$this->m_currentController = $initialController->doEnter( );
 	}
 	
-	public function doAction( $action )
+	public function doAction( Action $action )
 	{
 		$this->m_currentController = $this->m_currentController->doAction( $action );
 	}
