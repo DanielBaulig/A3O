@@ -7,7 +7,7 @@ require_once dirname( __FILE__ ) . '/A3PressRetreat.php';
 require_once dirname( __FILE__ ) . '/A3ConcludeCombat.php';
 
 
-class A3ConductCombatBuilder
+abstract class A3ConductCombatBuilder implements IStateLoader
 {
 	private $match; 
 	
@@ -55,6 +55,38 @@ class A3ConductCombatBuilder
 		
 		return $openingFire;
 	}
+	public function getStateSavedIn( $stateBuffer )
+	{
+		if( $this->openingFire->isSavedIn( $stateBuffer ) )
+		{
+			return $this->openingFire;
+		}
+		if( $this->openFireRemoveCasualties->isSavedIn( $stateBuffer ) )
+		{
+			return $this->combatRemoveCasualties;
+		}
+		if( $this->attackersFire->isSavedIn( $stateBuffer ) )
+		{
+			return $this->attackersFire;
+		}
+		if( $this->defendersFire->isSavedIn( $stateBuffer ) )
+		{
+			return $this->defendersFire;
+		}
+		if( $this->combatRemoveCasualties->isSavedIn( $stateBuffer ) )
+		{
+			return $this->combatRemoveCasualties;
+		}
+		if( $this->pressRetreat->isSavedIn( $stateBuffer ) )
+		{
+			return $this->pressRetreat;
+		}
+		if( $this->concludeCombat->isSavedIn( $stateBuffer ) )
+		{
+			return $this->concludeCombat;
+		}
+		return null;
+	}
 }
 
 class A3ConductCombatBuildDirector implements IStateMachineFactory
@@ -83,5 +115,10 @@ class A3ConductCombatBuildDirector implements IStateMachineFactory
 		$this->turnPhaseBuilder->buildConcludeCombat( );
 		
 		return $this->turnPhaseBuilder->getConductCombatMachine( $exitPoint );
+	}
+	
+	public function getStateSavedIn( $stateBuffer )
+	{
+		return $this->conductCombatBuilder->getStateSavedIn( $stateBuffer );
 	}
 }

@@ -1,5 +1,5 @@
 <?php
-class TurnSequence implements IState
+class TurnSequence extends BaseState
 {
 	protected $m_turnOrder;
 	protected $m_playerWonExit = null;
@@ -7,8 +7,9 @@ class TurnSequence implements IState
 	protected $m_currentIndex;
 	protected $m_playerWon = false;
 	
-	public function __construct( array $turnOrder )
+	public function __construct( $name, array $turnOrder )
 	{
+		parent::__construct( $name );
 		$this->m_turnOrder = $turnOrder;
 		$this->m_phaseSequenceMachine = $phaseSequenceMachine;
 		$this->m_gameOverState = $gameOverState;

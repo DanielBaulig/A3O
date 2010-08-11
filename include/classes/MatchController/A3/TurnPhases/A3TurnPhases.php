@@ -10,7 +10,7 @@ require_once dirname( __FILE__ ) . '/A3NonCombatMovement.php';
 require_once dirname( __FILE__ ) . '/A3Mobilize.php';
 require_once dirname( __FILE__ ) . '/A3CollectIncome.php';
 
-abstract class A3TurnPhasesBuilder
+abstract class A3TurnPhasesBuilder implements IStateLoader
 {
 	protected $match;
 	
@@ -53,7 +53,7 @@ abstract class A3TurnPhasesBuilder
 	{
 		$this->research->setUp ( $this->reinforcements );
 		$this->reinforcements->setUp( $this->combatMovement );
-		$this->combatMovement->set( $this->combat );
+		$this->combatMovement->setUp( $this->combat );
 		$this->combat->setUp( $this->nonCombatMovement, $this->conductCombatBuildDirector->createStateMachine( $this->combat ) );
 		$this->nonCombatMovement->setUp( $this->mobilize );
 		$this->mobilize->setUp( $this->collectIncome );
@@ -61,6 +61,39 @@ abstract class A3TurnPhasesBuilder
 		
 		return $this->research;
 	} 
+	
+	public function getStateSavedIn( $stateBuffer )
+	{
+		if ( $this->research->isSavedIn( $stateBuffer ) )
+		{
+			return $this->research;
+		}		
+		if ( $this->reinforcements->isSavedIn( $stateBuffer ) )
+		{
+			return $this->reinforcements;
+		}
+		if( $this->combatMovement->isSavedIn( $stateBuffer ) )
+		{
+			return $this->combatMovement;
+		}
+		if( $this->combat->isSavedIn( $stateBuffer ) )
+		{
+			return $this->combat;
+		}
+		if ( $this->nonCombatMovement->isSavedIn( $stateBuffer ) )
+		{
+			return $this->nonCombatMovement;
+		}
+		if( $this->mobilize->isSavedIn( $stateBuffer ) )
+		{
+			return $this->mobilize;
+		}
+		if( $this->collectIncome->isSavedIn( $stateBuffer ) )
+		{
+			return $this->collectIncome;
+		}
+		return $this->conductCombatBuildDirector->getStateSavedIn( $stateBuffer );
+	}
 }
 
 class  A3TurnPhasesBuildDirector implements IStateMachineFactory
@@ -72,7 +105,7 @@ class  A3TurnPhasesBuildDirector implements IStateMachineFactory
 		$this->turnPhaseBuilder = $turnPhaseBuilder;
 	}
 	
-	public function createTurnPhases( IState $exitPoint )
+	public function createStateMachine( IState $exitPoint )
 	{
 		$this->turnPhaseBuilder->createNewTurnMachine( );
 		$this->turnPhaseBuilder->buildResearch( );
@@ -86,8 +119,8 @@ class  A3TurnPhasesBuildDirector implements IStateMachineFactory
 		return $this->turnPhaseBuilder->getTurnPhaseMachine( $exitPoint );
 	}
 	
-	public function createStateMachine( IState $exitPoint )
+	public function getStateSavedIn( $stateBuffer )
 	{
-		return $this->createTurnPhases( $exitPoint );
+		return $this->turnPhaseBuilder->getStateSavedIn( $stateBuffer );
 	}
 }

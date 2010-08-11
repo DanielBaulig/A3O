@@ -1,5 +1,5 @@
 <?php
-class A3NonCombatMovement implements IState
+class A3NonCombatMovement extends BaseState
 {
 	protected $m_match;
 	protected $m_nextPhase;
@@ -7,8 +7,9 @@ class A3NonCombatMovement implements IState
 	const MOVE_PIECES = 'move';
 	const END_NONCOMBAT_MOVEMENT = 'endmove';
 	
-	public function __construct( MatchBoard $match )
+	public function __construct( $name, MatchBoard $match )
 	{
+		parent::__construct( $name );
 		$this->m_match = $match;
 	}
 	

@@ -1,11 +1,12 @@
 <?php 
-class A3OpeningFire implements IState
+class A3OpeningFire extends BaseState
 {
 	protected $m_match;
 	protected $m_nextPhase;
 	
-	public function __construct( MatchBoard $match )
+	public function __construct( $name, MatchBoard $match )
 	{
+		parent::__construct( $name );
 		$this->m_match = $match;	
 	}
 	

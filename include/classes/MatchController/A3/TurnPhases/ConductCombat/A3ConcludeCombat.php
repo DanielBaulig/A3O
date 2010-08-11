@@ -1,13 +1,14 @@
 <?php
-class A3ConcludeCombat implements IState
+class A3ConcludeCombat extends BaseState
 {
 	protected $m_nextPhase;
 	protected $m_match;
 
 	const END_COMBAT = 'endcombat';
 	
-	public function __construct( MatchBoard $match )
+	public function __construct( $name, MatchBoard $match )
 	{
+		parent::__construct( $name );
 		$this->m_match = $match;	
 	}
 	

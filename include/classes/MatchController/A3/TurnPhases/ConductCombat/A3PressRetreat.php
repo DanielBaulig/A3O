@@ -1,5 +1,5 @@
 <?php 
-class A3PressRetreat implements IState
+class A3PressRetreat extends BaseState
 {
 	protected $m_match;
 	protected $m_concludeCombat;
@@ -10,8 +10,9 @@ class A3PressRetreat implements IState
 	const PRESS_ATTACK = 'press';
 	const SUBMERGE = 'submerge';
 	
-	public function __construct( MatchBoard $match )
+	public function __construct( $name, MatchBoard $match )
 	{
+		parent::__construct( $name );
 		$this->m_match = $match;	
 		$this->attackers = 4;
 		$this->defenders = 4;

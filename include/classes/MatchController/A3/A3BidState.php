@@ -11,13 +11,13 @@ class A3BidStateBuilder
 
 class A3BidMachineBuildDirector implements IStateMachineFactory
 {
-	public function createBidMachine( IState $exitPoint )
+	public function createStateMachine( IState $exitPoint )
 	{
 		return new A3BidState( $exitPoint );
 	}
 	
-	public function createStateMachine( IState $exitPoint )
+	public function getStateSavedIn( $stateBuffer )
 	{
-		return $this->createBidMachine( $exitPoint );
+		return null;
 	}
 }

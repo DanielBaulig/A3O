@@ -1,11 +1,12 @@
 <?php 
-class A3AutoRemoveCasualties implements IState
+class A3AutoRemoveCasualties extends BaseState
 {
 	protected $m_match;
 	protected $m_nextPhase;
 	
-	public function __construct( MatchBoard $match )
+	public function __construct( $name, MatchBoard $match )
 	{
+		parent::__construct( $name );
 		$this->m_match = $match;	
 	}
 	
@@ -31,15 +32,16 @@ class A3AutoRemoveCasualties implements IState
 	}
 }
 
-class A3RemoveCasualties implements IState
+class A3RemoveCasualties extends BaseState
 {
 	protected $m_match;
 	protected $m_nextPhase;
 	
 	const SELECT = 'select';
 		
-	public function __construct( MatchBoard $match )
+	public function __construct( $name, MatchBoard $match )
 	{
+		parent::__construct( $name );
 		$this->m_match = $match;	
 	}
 	

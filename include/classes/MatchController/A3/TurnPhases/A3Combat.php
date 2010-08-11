@@ -1,5 +1,5 @@
 <?php
-class A3Combat implements IState
+class A3Combat extends BaseState
 {
 	protected $m_match;
 	protected $m_nextPhase;
@@ -8,8 +8,9 @@ class A3Combat implements IState
 	const CONDUCT_COMBAT = 'conduct';
 	const CONDUCT_ALL = 'conductall';
 	
-	public function __construct( MatchBoard $match )
+	public function __construct( $name, MatchBoard $match )
 	{
+		parent::__construct( $name );
 		$this->m_match = $match;	
 		$this->conflictsLeft = 5;
 	}

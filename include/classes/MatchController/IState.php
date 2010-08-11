@@ -1,5 +1,22 @@
 <?php
-class UnimplementedState implements IState
+abstract class BaseState implements IState
+{
+	private $m_name;
+	public function saveTo( &$stateBuffer )
+	{
+		$stateBuffer = $this->m_name;
+	}
+	public function isSavedIn( $stateBuffer )
+	{
+		return $stateBuffer == $this->m_name;
+	}
+	public function __construct( $name )
+	{
+		$this->m_name = $name;
+	}
+}
+
+class UnimplementedState extends BaseState
 {
 	private $m_nextState;
 	
@@ -14,19 +31,25 @@ class UnimplementedState implements IState
 		throw new Exception( 'State not implemented!' );
 	}
 	
-	public function __construct( IState $nextState )
+	public function __construct( $name, IState $nextState )
 	{
+		parent::__construct( $name );
 		$this->m_nextState = $nextState;
 	}
 }
 
-interface IStateMachineFactory 
+interface IStateMachineFactory extends IStateLoader
 {
 	/** 
 	 * @param IState $exitPoint
 	 * @return IState
 	 */
 	public function createStateMachine( IState $exitPoint );
+}
+
+interface IStateLoader
+{
+	public function getStateSavedIn( $stateBuffer );
 }
 
 interface IState

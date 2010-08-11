@@ -1,5 +1,5 @@
 <?php
-class A3Reinforcements implements IState
+class A3Reinforcements extends BaseState
 {
 	protected $m_nextPhase;
 	protected $m_match;
@@ -7,8 +7,9 @@ class A3Reinforcements implements IState
         const BUY_PIECES = 'buy';
 	const END_REINFORCEMENTS = 'endreinforcements';
 	
-	public function __construct( MatchBoard $match )
+	public function __construct( $name, MatchBoard $match )
 	{
+		parent::__construct( $name );
 		$this->m_match = $match;	
 	}
 	
