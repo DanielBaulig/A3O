@@ -20,6 +20,11 @@ class UnimplementedState extends BaseState
 {
 	private $m_nextState;
 	
+	public function setUp( IState $nextState )
+	{
+		$this->m_nextState = $nextState;
+	}
+	
 	public function doEnter( )
 	{
 		return $this->m_nextState;
@@ -31,10 +36,9 @@ class UnimplementedState extends BaseState
 		throw new Exception( 'State not implemented!' );
 	}
 	
-	public function __construct( $name, IState $nextState )
+	public function __construct( $name )
 	{
 		parent::__construct( $name );
-		$this->m_nextState = $nextState;
 	}
 }
 

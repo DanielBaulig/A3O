@@ -30,20 +30,19 @@ abstract class A3TurnPhasesBuilder implements IStateLoader
 		$this->conductCombatBuildDirector = $conductCombatBuildDirector;
 	}
 
-	abstract public function buildResearch( );
-	abstract public function buildReinforcements( );
-	abstract public function buildCombatMovement( );
-	abstract public function buildCombat( );
-	abstract public function buildNonCombatMovement( );
-	abstract public function buildMobilize( );
-	abstract public function buildCollectIncome( );
+	abstract public function buildResearch( $name );
+	abstract public function buildReinforcements( $name );
+	abstract public function buildCombatMovement( $name );
+	abstract public function buildCombat( $name );
+	abstract public function buildNonCombatMovement( $name );
+	abstract public function buildMobilize( $name );
+	abstract public function buildCollectIncome( $name );
 	
 	public function createNewTurnPhasesMachine( )
 	{
 		$this->collectIncome = null;
 		$this->combat = null;
 		$this->combatMovement = null;
-		$this->match = null;
 		$this->mobilize = null;
 		$this->nonCombatMovement = null;
 		$this->reinforcements = null;
@@ -107,16 +106,16 @@ class  A3TurnPhasesBuildDirector implements IStateMachineFactory
 	
 	public function createStateMachine( IState $exitPoint )
 	{
-		$this->turnPhaseBuilder->createNewTurnMachine( );
-		$this->turnPhaseBuilder->buildResearch( );
-		$this->turnPhaseBuilder->buildReinforcements( );
-		$this->turnPhaseBuilder->buildCombatMovement( );
-		$this->turnPhaseBuilder->buildCombat( );
-		$this->turnPhaseBuilder->buildNonCombatMovement( );
-		$this->turnPhaseBuilder->buildMobilize( );
-		$this->turnPhaseBuilder->buildCollectIncome( );
+		$this->turnPhaseBuilder->createNewTurnPhasesMachine( );
+		$this->turnPhaseBuilder->buildResearch( 'Research' );
+		$this->turnPhaseBuilder->buildReinforcements( 'Reinforcements' );
+		$this->turnPhaseBuilder->buildCombatMovement( 'Combat Movement' );
+		$this->turnPhaseBuilder->buildCombat( 'Combat' );
+		$this->turnPhaseBuilder->buildNonCombatMovement( 'Non-Combat Movement' );
+		$this->turnPhaseBuilder->buildMobilize( 'Mobilize' );
+		$this->turnPhaseBuilder->buildCollectIncome( 'Collect Income' );
 		
-		return $this->turnPhaseBuilder->getTurnPhaseMachine( $exitPoint );
+		return $this->turnPhaseBuilder->getTurnPhasesMachine( $exitPoint );
 	}
 	
 	public function getStateSavedIn( $stateBuffer )

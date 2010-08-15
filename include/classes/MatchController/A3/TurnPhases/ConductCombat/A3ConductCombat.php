@@ -1,15 +1,15 @@
 <?php
 require_once dirname( __FILE__ ) . '/A3OpeningFire.php';
 require_once dirname( __FILE__ ) . '/A3RemoveCasualties.php';
-// attack fire
-// defend fire
+require_once dirname( __FILE__ ) . '/A3AttackersFire.php';
+require_once dirname( __FILE__ ) . '/A3DefendersFire.php';
 require_once dirname( __FILE__ ) . '/A3PressRetreat.php';
 require_once dirname( __FILE__ ) . '/A3ConcludeCombat.php';
 
 
 abstract class A3ConductCombatBuilder implements IStateLoader
 {
-	private $match; 
+	protected $match; 
 	
 	protected $openingFire;
 	protected $openFireRemoveCasualties;
@@ -24,13 +24,13 @@ abstract class A3ConductCombatBuilder implements IStateLoader
 		$this->match = $match;
 	}
 	
-	abstract public function buildOpeningFire( );
-	abstract public function buildOpeningFireRemoveCasualties( );
-	abstract public function buildAttackersFire( );
-	abstract public function buildDefendersFire( );
-	abstract public function buildCombatRemoveCasualties( );
-	abstract public function buildPressRetreat( );
-	abstract public function buildConcludeCombat( );
+	abstract public function buildOpeningFire( $name );
+	abstract public function buildOpeningFireRemoveCasualties( $name );
+	abstract public function buildAttackersFire( $name );
+	abstract public function buildDefendersFire( $name );
+	abstract public function buildCombatRemoveCasualties( $name );
+	abstract public function buildPressRetreat( $name );
+	abstract public function buildConcludeCombat( $name );
 	
 	public function createNewConductCombatMachine( )
 	{
@@ -45,7 +45,7 @@ abstract class A3ConductCombatBuilder implements IStateLoader
 	
 	public function getConductCombatMachine( IState $exitPoint )
 	{
-		$openingFire->setUp( $this->openFireRemoveCasualties );
+		$this->openingFire->setUp( $this->openFireRemoveCasualties );
 		$this->openFireRemoveCasualties->setUp( $this->attackersFire );
 		$this->attackersFire->setUp( $this->defendersFire );
 		$this->defendersFire->setUp( $this->combatRemoveCasualties );
@@ -53,8 +53,9 @@ abstract class A3ConductCombatBuilder implements IStateLoader
 		$this->pressRetreat->setUp( $this->concludeCombat, $this->attackersFire );
 		$this->concludeCombat->setUp( $exitPoint );
 		
-		return $openingFire;
+		return $this->openingFire;
 	}
+	
 	public function getStateSavedIn( $stateBuffer )
 	{
 		if( $this->openingFire->isSavedIn( $stateBuffer ) )
@@ -105,16 +106,16 @@ class A3ConductCombatBuildDirector implements IStateMachineFactory
 	
 	public function createConductCombat( IState $exitPoint )
 	{
-		$this->turnPhaseBuilder->createNewConductCombatMachine( );
-		$this->turnPhaseBuilder->buildOpeningFire( );
-		$this->turnPhaseBuilder->buildOpeningFireRemoveCasualties( );
-		$this->turnPhaseBuilder->buildAttackersFire( );
-		$this->turnPhaseBuilder->buildDefendersFire( );
-		$this->turnPhaseBuilder->buildCombatRemoveCasualties( );
-		$this->turnPhaseBuilder->buildPressRetreat( );
-		$this->turnPhaseBuilder->buildConcludeCombat( );
+		$this->conductCombatBuilder->createNewConductCombatMachine( );
+		$this->conductCombatBuilder->buildOpeningFire( 'Opening Fire' );
+		$this->conductCombatBuilder->buildOpeningFireRemoveCasualties( 'Opening Fire Remove Casualties' );
+		$this->conductCombatBuilder->buildAttackersFire( 'Attackers Fire' );
+		$this->conductCombatBuilder->buildDefendersFire( 'Defenders Fire' );
+		$this->conductCombatBuilder->buildCombatRemoveCasualties( 'Remove Casualties' );
+		$this->conductCombatBuilder->buildPressRetreat( 'Press or Retreat' );
+		$this->conductCombatBuilder->buildConcludeCombat( 'Conclude Combat' );
 		
-		return $this->turnPhaseBuilder->getConductCombatMachine( $exitPoint );
+		return $this->conductCombatBuilder->getConductCombatMachine( $exitPoint );
 	}
 	
 	public function getStateSavedIn( $stateBuffer )

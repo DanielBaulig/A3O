@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__FILE__) . '/A3SetupState.php';
 require_once dirname(__FILE__) . '/A3BidState.php';
+require_once dirname(__FILE__) . '/A3GameOver.php';
 
 require_once dirname(__FILE__) . '/TurnPhases/A3TurnPhases.php';
 
@@ -25,8 +26,8 @@ abstract class A3MatchMachineBuilder implements IStateLoader
 		$this->turnPhasesBuildDirector = $turnPhasesBuildDirector;
 	}
 	
-	abstract public function buildSetup( );
-	abstract public function buildGameOver( );
+	abstract public function buildSetup( $name );
+	abstract public function buildGameOver( $name );
 	
 	public function createNewMatchMachine( )
 	{
