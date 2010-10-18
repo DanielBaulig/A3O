@@ -6,7 +6,6 @@
  <script src="http://jquery.com/src/jquery-latest.js"></script>
  <script src="javascript/jQuery_mousewheel_plugin.js"></script>
  <script src="static/javascript/a3o_oo.js"></script>
- <script src="static/json/games/big_world/polygons.json"></script>
  <script type="text/javascript">
 
 	$(document).ready(function(){
