@@ -41,7 +41,7 @@ A3O = function () {
 				//this.boardBuffer.src = this.bufferContext.canvas.toDataURL('image/png');
 				this.boardBufferData = this.bufferContext.getImageData( 0, 0, BOARD_WIDTH, BOARD_HEIGHT );
 			}
-			if (console)
+			if (typeof console != 'undefined')
 				console.log('drawBoard();');
 		},
 		drawUnits: function( ) {
@@ -129,7 +129,7 @@ A3O = function () {
 				bufferContext.stroke();
 			}
 			bufferContext.restore();
-			if (console)
+			if (typeof console != 'undefined')
 				console.log (c);
 		},
 		swapBuffers: function( ) {
@@ -242,7 +242,7 @@ A3O = function () {
 			var coords = this.transformCoordinates(x, y);
 			x = coords.x;
 			y = coords.y;
-			if (console)
+			if (typeof console != 'undefined')
 				console.log('X: ' + x + ' Y: ' + y);
 			for(var p in polygons) {
 				// store some local variables to speed things up
@@ -254,7 +254,7 @@ A3O = function () {
 					if ( (ul[1] < y) && (lr[1] > y) )
 					{
 						if ( isPointInPolygon(polygon.polygon, x, y)) {
-							if (console)
+							if (typeof console != 'undefined')
 								console.log(polygon.name);
 							this.selectedZone = p;
 							return;

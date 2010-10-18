@@ -17,7 +17,7 @@
 </head>
 <body>
 			This is a development version of 'A3O', a browser based Tripple A / Axis & Allies clone. It is for testing only.<br/>
-			<b id="loading">Loading ressources... please be patient.</b>
+			<b id="loading">Loading ressources... please be patient.</b><br/>
 		
 			<canvas height="600" width="1000" id="map" style="border:solid black;">
 			You need HTML5 Canvas to view this webpage. You can get a HTML5 capable browser <a href="http://www.google.com/chrome/">here</a>.
