@@ -169,7 +169,7 @@ class MatchZonePDOFactory implements IFactory
 		
 		if ( !$zone )
 		{
-			// $key must have been sanitized, in case this message is displayed to a user!
+			// WARHNING! $key must have been sanitized, in case this message is displayed to a user!
 			//TODO: Sanitize all incoming keys (type-, zone-, nation- and alliance names) upon first touch!
 			throw new DomainException('Specified zone ' . $key . ' not valid.');
 		}
@@ -209,6 +209,23 @@ class MatchZonePDOFactory implements IFactory
 		}
 		
 		return $zones;
+	}
+}
+
+// Note to myself: Following Storer is just a concept.
+class MatchZoneStreamStorer extends Storer
+{
+	protected $m_stream;
+	public function __construct( $stream, $named = false )
+	{
+		$this->m_stream = $stream;
+		$this->m_named = $named;
+	}
+	public function store( IStoreable $zone )
+	{
+		$data = $this->getStoreableData( $zone );
+		
+		fwrite($this->m_stream, ($this->m_named ? '"'.$data[MatchZone::NAME].'":' : '') . json_encode( $data ) );
 	}
 }
 
