@@ -3,11 +3,10 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
 <title>Insert title here</title>
- <script src="http://jquery.com/src/jquery-latest.js"></script>
- <script src="javascript/jQuery_mousewheel_plugin.js"></script>
+ <script src="static/javascript/jquery-1.4.3.min.js"></script>
+ <script src="static/javascript/jquery.mousewheel.min.js"></script>
  <script src="static/javascript/a3o_oo.js"></script>
  <script type="text/javascript">
-
 	$(document).ready(function(){
 		A3O.loadRessources( function(){ $('#loading').hide();  A3O.setup( document.getElementById('map').getContext('2d') ); });		
 	});
