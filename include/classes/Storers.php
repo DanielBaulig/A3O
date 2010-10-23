@@ -4,6 +4,24 @@ interface IStoreable
 	public function storeData( Storer $storer );
 }
 
+/**
+ * Implementation of half of the Memento pattern. A storer takes
+ * an object implementing the IStoreable interface and stores it's
+ * state in any location that is implemented for the storer.  
+ * 
+ * The storer calls the storeData method of the IStoreable object
+ * and passes itself as parameter. If IStoreable is implemented
+ * correctly the IStoreable will call the storers takeData method 
+ * passing an array containing all data to be stored. 
+ * 
+ * Some media require a seperator between objects (eg in a stream). If
+ * your storer does need a seperator reimplement the next( ) method to 
+ * generate the seperator. 
+ * When using a Storer to store multiple objects you should make sure to 
+ * call next( ) between each of the objects.
+ * 
+ * @author Daniel Baulig
+ */
 abstract class Storer
 {
 	private $m_dataBuffer;
@@ -18,36 +36,7 @@ abstract class Storer
 	}
 	
 	abstract public function store( IStoreable $storeable );
-}
-
-interface IStorerFactory
-{	
-	public function createStorer( IStoreable $storeable );
-}
-
-class A3StorerPDOFactory implements IStorerFactory
-{
-	protected $m_pdo;
-	protected $m_match;
-	
-	public function createStorer( IStoreable $storeable )
+	public function next( ) 
 	{
-		switch( get_class( $storeable ) )
-		{
-			case 'A3MatchPlayer':
-					return new MatchPlayerPDOStorer( $this->m_pdo, $this->m_match, $storeable );
-			case 'MatchZone':
-					return new MatchZonePDOStorer( $this->m_pdo, $this->m_match, $storeable );
-			case 'A3MatchBoard':
-					return new MatchBoardPDOStorer( $this->m_pdo, $this->m_match, $storeable );
-			default:
-				throw new InvalidArgumentException( 'Unknown IStoreable implementation. You are propably using the wrong StorerFactory.' );
-		}
-	}
-	
-	public function __construct( PDO $pdo, $match_id )
-	{
-		$this->m_pdo = $pdo;
-		$this->m_match = $match_id;
 	}
 }

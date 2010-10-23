@@ -216,7 +216,7 @@ class MatchZonePDOFactory implements IFactory
 class MatchZoneStreamStorer extends Storer
 {
 	protected $m_stream;
-	public function __construct( $stream, $named = false )
+	public function __construct( $stream, $named = true )
 	{
 		$this->m_stream = $stream;
 		$this->m_named = $named;
