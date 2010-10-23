@@ -62,6 +62,11 @@ class BaseRegistry
 	 * the element referenced by $key using the methods provided
 	 * by the factory.
 	 * 
+	 * If $key is not found in the registry it will be created
+	 * using the factory. If the factory cannot create an object
+	 * corresponding to $key, the registry will return null instead
+	 * of an object.
+	 * 
 	 * @param mixed $key
 	 * @param boolean $forceReload (optional)
 	 * @return mixed
