@@ -21,7 +21,7 @@ class AARMatchZonePDOFactory extends A3MatchZonePDOFactory
 			// tech-modified versions of the types.
 			if ( $this->m_match->getPlayer( $row['nation'] )->hasTechnologyResearched( ) )
 			{
-				$row['type'] = $this->m_match->addTechedType( $row['type'], $row['nation'] );
+				$row['type'] = $this->m_match->getTechedType( $row['type'], $row['nation'] );
 			}
 			$pieces[$row['nation']][$row['type']] = $row['count'];
 		}
