@@ -27,7 +27,7 @@ class UnimplementedState extends BaseState
 	
 	public function doEnter( )
 	{
-		return $this->m_nextState;
+		return $this->m_nextState->doEnter( );
 	}
 	
 	public function doAction( Action $action )

@@ -5,6 +5,31 @@ require_once dirname(__FILE__) . '/A3GameOver.php';
 
 require_once dirname(__FILE__) . '/TurnPhases/A3TurnPhases.php';
 
+class  A3MatchMachineBuildDirector implements IStateMachineFactory
+{
+	private $matchMachineBuilder = null;
+	
+	public function setMatchMachineBuilder( A3MatchMachineBuilder $matchMachineBuilder )
+	{
+		$this->matchMachineBuilder = $matchMachineBuilder;
+	}
+	
+	public function createStateMachine( IState $exitPoint )
+	{
+		$this->matchMachineBuilder->createNewMatchMachine();
+		
+		$this->matchMachineBuilder->buildSetup( 'Setup' );
+		$this->matchMachineBuilder->buildGameOver( 'Game Over' );
+		
+		return $this->matchMachineBuilder->getMatchMachine( $exitPoint );
+	}
+	
+	public function getStateSavedIn( $stateBuffer )
+	{
+		return $this->matchMachineBuilder->getStateSavedIn( $stateBuffer );
+	}
+}
+
 
 abstract class A3MatchMachineBuilder implements IStateLoader
 {
@@ -37,8 +62,8 @@ abstract class A3MatchMachineBuilder implements IStateLoader
 	
 	public function getMatchMachine(  )
 	{
-		$this->setup->setUp( $this->gameOver );
-		$this->bidMachineBuildDirector->createStateMachine( $this->turnPhasesBuildDirector->createStateMachine( $this->gameOver ) );
+		$bid = $this->bidMachineBuildDirector->createStateMachine( $this->turnPhasesBuildDirector->createStateMachine( $this->gameOver ) );
+		$this->setup->setUp( $bid );
 		return $this->setup;
 	}
 	
@@ -56,7 +81,7 @@ abstract class A3MatchMachineBuilder implements IStateLoader
 		{
 			return $state;
 		}
-		if ( $state = $this->turnPhaseMachineBuildDirector->getStateSavedIn( $stateBuffer ) )
+		if ( $state = $this->turnPhasesBuildDirector->getStateSavedIn( $stateBuffer ) )
 		{
 			return $state;
 		}

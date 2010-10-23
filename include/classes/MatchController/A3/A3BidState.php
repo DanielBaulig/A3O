@@ -13,7 +13,9 @@ class A3BidMachineBuildDirector implements IStateMachineFactory
 {
 	public function createStateMachine( IState $exitPoint )
 	{
-		return new A3BidState( $exitPoint );
+		$bid = new A3BidState( 'bid' );
+		$bid->setUp( $exitPoint );
+		return $bid;
 	}
 	
 	public function getStateSavedIn( $stateBuffer )
