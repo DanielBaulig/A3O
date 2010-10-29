@@ -38,8 +38,8 @@ A3O = function () {
 			this.drawBackgroundImages();
 			this.drawUnits();			
 			if ( saveBuffer ) {
-				//this.boardBuffer.src = this.bufferContext.canvas.toDataURL('image/png');
-				this.boardBufferData = this.bufferContext.getImageData( 0, 0, BOARD_WIDTH, BOARD_HEIGHT );
+				this.boardBuffer.src = this.bufferContext.canvas.toDataURL('image/png');
+				//this.boardBufferData = this.bufferContext.getImageData( 0, 0, BOARD_WIDTH, BOARD_HEIGHT );
 			}
 			if (typeof console != 'undefined')
 				console.log('drawBoard();');
@@ -50,8 +50,8 @@ A3O = function () {
 		drawInterface: function( useBuffer ) {
 			var bufferContext = this.bufferContext;
 			if ( useBuffer ) {
-				bufferContext.putImageData( this.boardBufferData, 0, 0 );
-				//bufferContext.drawImage ( this.boardBuffer, 0, 0, BOARD_WIDTH, BOARD_HEIGHT );
+				//bufferContext.putImageData( this.boardBufferData, 0, 0 );
+				bufferContext.drawImage ( this.boardBuffer, 0, 0, BOARD_WIDTH, BOARD_HEIGHT );
 				//this.drawBoard( false );
 			}
 			// draw selected zone
@@ -133,31 +133,70 @@ A3O = function () {
 				console.log (c);
 		},
 		swapBuffers: function( ) {
+			var viewportContext = this.viewportContext;
 			var viewportOffsetX = this.viewportOffset.x;
 			var viewportOffsetY = this.viewportOffset.y;
-			var viewportCanvasWidth = this.viewportContext.canvas.width;
-			var viewportCanvasHeight = this.viewportContext.canvas.height;
-			this.viewportContext.drawImage(
-				this.bufferContext.canvas, 
-				viewportOffsetX, 
-				viewportOffsetY, 
-				viewportCanvasWidth, 
-				viewportCanvasHeight, 
-				0, 
-				0,
-				viewportCanvasWidth, 
-				viewportCanvasHeight 
-			);
+			
+			var viewportCanvasWidth = viewportContext.canvas.width; // <- is this DOM touching?
+			var viewportCanvasHeight = viewportContext.canvas.height; // <- is this DOM touching?
+
+			/* Chrome and some other HTML5 browser do not like it, if you
+			 * try to draw more of an image than there is data in the eg (draw
+			 * 200 pixels of an image that only has 100 pixels) and will throw
+			 * an exception if you try to do so (instead of simply not drawing
+			 * anything for the out of bounds area).
+			 * To prevent this we check if the viewport shows an area that is
+			 * out of bounds for the image and if so only draws the remaining
+			 * part of the image by cropping how much is drawn.
+			 */			
+			
+			// calculate how much of the image is out of bounds.
+			// negative valueds indicate the entire viewport is inside
+			// the bounds of the image
+			// positive values indicate that the viewport is out of bounds
+			// of the image and by how mich pixels it is out of bounds.
+			// we can use this value to reduce how much is drawn.
+			var viewportOutOfBounds = viewportOffsetX - (BOARD_WIDTH - viewportCanvasWidth);
+			
 			// if the viewport is past the right edge 
-			if (viewportOffsetX > (BOARD_WIDTH - viewportCanvasWidth) )
+			if ( viewportOutOfBounds > 0 )
 			{
-				this.viewportContext.drawImage(
+				viewportContext.drawImage(
+					this.bufferContext.canvas, 
+					viewportOffsetX, 
+					viewportOffsetY, 
+					viewportCanvasWidth - viewportOutOfBounds, // crop how much is drawn by diff
+					viewportCanvasHeight, 
+					0, 
+					0,
+					viewportCanvasWidth - viewportOutOfBounds, // crop how much is drawn by diff
+					viewportCanvasHeight 
+				);
+				
+				// draw the remainder by beginning over again
+				viewportContext.drawImage(
 					this.bufferContext.canvas, 
 					0,
 					viewportOffsetY, 
 					viewportCanvasWidth, 
 					viewportCanvasHeight, 
 					-(viewportOffsetX - BOARD_WIDTH),
+					0,
+					viewportCanvasWidth, 
+					viewportCanvasHeight 
+				);
+			}
+			else
+			{
+				// the viewport is perfectly within the bounds of the image
+				// so simply draw that part of the image.
+				viewportContext.drawImage(
+					this.bufferContext.canvas, 
+					viewportOffsetX, 
+					viewportOffsetY, 
+					viewportCanvasWidth, 
+					viewportCanvasHeight, 
+					0, 
 					0,
 					viewportCanvasWidth, 
 					viewportCanvasHeight 
