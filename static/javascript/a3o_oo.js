@@ -363,7 +363,7 @@ A3O = function () {
 			
 			var delayedCallback = createCallback( nlen * ulen, doneCallback );
 			this.ressources.sprites = {};
-			console.log('yeah');
+
 			for ( i = 0; i < nlen; i++ ) {
 				var nation = nations[i];
 				this.ressources.sprites[nation] = {};
