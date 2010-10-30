@@ -3,6 +3,10 @@ A3O = function () {
 	const GAME_NAME = 'big_world';
 	const BOARD_WIDTH = 4876;
 	const BOARD_HEIGHT = 2278;
+	const SELECT_GLOW_AMOUNT = 10;
+	
+	const DEBUGGING = true;
+	const DRAW_BOUNDING_BOXES = DEBUGGING;
 	
 	// HELPER FUNCTIONS
 	var createCallback = function (limit, fn) {
@@ -25,6 +29,11 @@ A3O = function () {
 		return c;
 	}
 	
+	var expandRectangle = function ( rectangle, expand ) {
+		var ul = rectangle.ul, lr = rectangle.lr;
+		return { ul: [ ul[0]-expand, ul[1]-expand ], lr: [ lr[0]+expand, lr[1]+expand ] };
+	}
+	
 	
 	// A3O GAME OBJECT
 	return {
@@ -34,8 +43,8 @@ A3O = function () {
 		viewportOffsetPanningStart: {x:0,y:0},
 		ressources: {},
 		drawBoard: function( saveBuffer ) {
-			this.drawZonePolygons();
 			this.drawBackgroundImages();
+			this.drawZonePolygons();			
 			this.drawUnits();			
 			if ( saveBuffer ) {
 				this.boardBuffer.src = this.bufferContext.canvas.toDataURL('image/png');
@@ -75,7 +84,7 @@ A3O = function () {
 				bufferContext.shadowOffsetX = 0;
 				bufferContext.shadowOffsetY = 0;
 				bufferContext.shadowOffsetY = 0;
-				bufferContext.shadowBlur = 10;
+				bufferContext.shadowBlur = SELECT_GLOW_AMOUNT;
 				bufferContext.shadowColor = 'red';
 				
 				bufferContext.beginPath();
@@ -115,6 +124,22 @@ A3O = function () {
 			for (var polygon in polygons) {
 				polygon = polygons[polygon];
 				
+				
+				if ( DRAW_BOUNDING_BOXES ) {
+					// draw bounding box for debugging
+					bufferContext.save();				
+					bufferContext.strokeStyle = 'green';				
+					bufferContext.beginPath();
+					bufferContext.moveTo(polygon.boundingbox.ul[0], polygon.boundingbox.ul[1]);
+					bufferContext.lineTo(polygon.boundingbox.ul[0], polygon.boundingbox.lr[1]);
+					bufferContext.lineTo(polygon.boundingbox.lr[0], polygon.boundingbox.lr[1]);
+					bufferContext.lineTo(polygon.boundingbox.lr[0], polygon.boundingbox.ul[1]);
+					bufferContext.closePath();
+					bufferContext.stroke();
+					bufferContext.restore();
+					// end boundingbox
+				}
+				
 				// do something with the entire polygon structure
 				// ...
 				if (polygon.sz){
@@ -146,11 +171,23 @@ A3O = function () {
 			var bufferContext = this.bufferContext;
 			var ul = clipRect.ul;
 			var lr = clipRect.lr;
+			/*// draw bounding box for debugging
+			bufferContext.save();				
+			bufferContext.strokeStyle = 'green';				
+			bufferContext.beginPath();
+			bufferContext.moveTo(ul[0], ul[1]);
+			bufferContext.lineTo(ul[0], lr[1]);
+			bufferContext.lineTo(lr[0], lr[1]);
+			bufferContext.lineTo(lr[0], ul[1]);
+			bufferContext.closePath();
+			bufferContext.stroke();
+			bufferContext.restore();
+			// end boundingbox*/
 			bufferContext.beginPath();
 			bufferContext.moveTo(ul[0],ul[1]);
+			bufferContext.lineTo(ul[0],lr[1]);
+			bufferContext.lineTo(lr[0],lr[1]);
 			bufferContext.lineTo(lr[0],ul[1]);
-			bufferContext.lineTo(lr[0],lr[0]);
-			bufferContext.lineTo(ul[0],lr[0]);
 			bufferContext.closePath();
 			bufferContext.clip();
 		},
@@ -386,7 +423,7 @@ A3O = function () {
 				switch( e.which ) {
 					case 1:
 						if ( that.selectedZone ) {
-							that.clearBoard( that.ressources.polygons[that.selectedZone].boundingbox );
+							that.clearBoard( expandRectangle(that.ressources.polygons[that.selectedZone].boundingbox, SELECT_GLOW_AMOUNT) );
 						}
 						that.selectZone( e.pageX, e.pageY );
 						that.drawInterface( );
