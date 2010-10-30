@@ -18,11 +18,17 @@ A3O = function () {
 	    };
 	}
 	
+	// based on the C-code from http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+	// added some JS optimizations (reducing scope lookups).
 	var isPointInPolygon = function (vertices, x, y) {
 		var i, j, c = false;
-		for (i = 0, j = vertices.length-1; i < vertices.length; j = i++) {
-			if ( ( (vertices[i][1]>y ) != (vertices[j][1]>y) ) &&
-				(x < (vertices[j][0]-vertices[i][0]) * (y-vertices[i][1]) / (vertices[j][1]-vertices[i][1]) + vertices[i][0]) ) {
+		var len = vertices.length;
+		var iElement, jElement;
+		for (i = 0, j = len-1; i < len; j = i++) {
+			iElement = vertices[i];
+			jElement = vertices[j];
+			if ( ( (iElement[1]>y ) != (jElement[1]>y) ) &&
+				(x < (jElement[0]-iElement[0]) * (y-iElement[1]) / (jElement[1]-iElement[1]) + iElement[0]) ) {
 				c = !c;
 			}
 		}
@@ -71,11 +77,13 @@ A3O = function () {
 		},
 		drawInterface: function( ) {
 			var bufferContext = this.bufferContext;
+			var selectedZone = this.selectedZone;
 			
 			// draw selected zone
-			if ( this.selectedZone ) {
-				var polygon = this.ressources.polygons[this.selectedZone].polygon;
+			if ( selectedZone ) {
+				var polygon = this.ressources.polygons[selectedZone].polygon;
 				var length = polygon.length;
+				var currentPolygon = null;
 				
 				bufferContext.save();
 				bufferContext.strokeStyle = 'black';
@@ -89,10 +97,12 @@ A3O = function () {
 				
 				bufferContext.beginPath();
 				
-				bufferContext.moveTo( polygon[0][0], polygon[0][1] );
+				currentPolygon = polygon[0];
+				bufferContext.moveTo( currentPolygon[0], currentPolygon[1] );
 				
 				for( var i = 1; i < length; i++ ) {
-					bufferContext.lineTo( polygon[i][0], polygon[i][1] );
+					currentPolygon = polygon[i];
+					bufferContext.lineTo( currentPolygon[0], currentPolygon[1] );
 				}
 				
 				bufferContext.closePath();
@@ -126,14 +136,15 @@ A3O = function () {
 				
 				
 				if ( DRAW_BOUNDING_BOXES ) {
+					var ul = polygon.boundingbox.ul, lr = polygon.boundingbox.lr;
 					// draw bounding box for debugging
 					bufferContext.save();				
 					bufferContext.strokeStyle = 'green';				
 					bufferContext.beginPath();
-					bufferContext.moveTo(polygon.boundingbox.ul[0], polygon.boundingbox.ul[1]);
-					bufferContext.lineTo(polygon.boundingbox.ul[0], polygon.boundingbox.lr[1]);
-					bufferContext.lineTo(polygon.boundingbox.lr[0], polygon.boundingbox.lr[1]);
-					bufferContext.lineTo(polygon.boundingbox.lr[0], polygon.boundingbox.ul[1]);
+					bufferContext.moveTo(ul[0], ul[1]);
+					bufferContext.lineTo(ul[0], lr[1]);
+					bufferContext.lineTo(lr[0], lr[1]);
+					bufferContext.lineTo(lr[0], ul[1]);
 					bufferContext.closePath();
 					bufferContext.stroke();
 					bufferContext.restore();
@@ -147,14 +158,17 @@ A3O = function () {
 				}
 				
 				// get the vertex list
-				polygon = polygon.polygon;
-				var length = polygon.length;
+				var vertices = polygon.polygon;
+				var length = vertices.length;
+				var point = null;
 				bufferContext.beginPath();
+				
 				if (length > 0) {
-					bufferContext.moveTo( polygon[0][0], polygon[0][1] );	
+					point = vertices[0];
+					bufferContext.moveTo( point[0], point[1] );	
 				}			
 				for(var i = 1; i < length; i++){
-					var point = polygon[i];
+					point = vertices[i];
 					bufferContext.lineTo( point[0], point[1] );
 					c++;
 				}
@@ -196,8 +210,8 @@ A3O = function () {
 			var viewportOffsetX = this.viewportOffset.x;
 			var viewportOffsetY = this.viewportOffset.y;
 			
-			var viewportCanvasWidth = viewportContext.canvas.width; // <- is this DOM touching?
-			var viewportCanvasHeight = viewportContext.canvas.height; // <- is this DOM touching?
+			var viewportCanvasWidth = viewportContext.canvas.width; // <- is this DOM touching? I believe so.
+			var viewportCanvasHeight = viewportContext.canvas.height; // <- is this DOM touching? I believe so.
 
 			/* Chrome and some other HTML5 browser do not like it, if you
 			 * try to draw more of an image than there is data in the eg (draw
@@ -327,12 +341,12 @@ A3O = function () {
 			}
 		},
 		transformCoordinates: function (x, y) {
-			var offset = jQuery(this.viewportContext.canvas).offset();
+			var offset = jQuery(this.viewportContext.canvas).offset(); // this propably has a fucking big overhead!
 			x = x + this.viewportOffset.x - offset.left;
 			if ( x > BOARD_WIDTH ) {
 				x -= BOARD_WIDTH;
 			}				
-			y = y + this.viewportOffset.y + - offset.top;
+			y = y + this.viewportOffset.y - offset.top;
 			return {x: x, y: y};
 		},
 		selectZone: function (x, y) {
@@ -348,9 +362,11 @@ A3O = function () {
 				var ul = polygon.boundingbox.ul;
 				var lr = polygon.boundingbox.lr;
 	
+				// see if the selected point lies within the polygons boundingbox
 				if ( (ul[0] < x) && (lr[0] > x) ) {
 					if ( (ul[1] < y) && (lr[1] > y) )
 					{
+						// if it does, check if it is really inside the polygon
 						if ( isPointInPolygon(polygon.polygon, x, y)) {
 							if (typeof console != 'undefined')
 								console.log(polygon.name);
@@ -372,20 +388,21 @@ A3O = function () {
 			this.panning = false;
 		},
 		pan: function(x, y) {
-			this.viewportOffset.x = this.viewportOffsetPanningStart.x - ( x - this.panningStart.x );
-			this.viewportOffset.y = this.viewportOffsetPanningStart.y - ( y - this.panningStart.y );
-			if ( this.viewportOffset.y < 0 ) {
-				this.viewportOffset.y = 0;
+			var viewportOffset = this.viewportOffset;
+			viewportOffset.x = this.viewportOffsetPanningStart.x - ( x - this.panningStart.x );
+			viewportOffset.y = this.viewportOffsetPanningStart.y - ( y - this.panningStart.y );
+			if ( viewportOffset.y < 0 ) {
+				viewportOffset.y = 0;
 			}
-			if( this.viewportOffset.y > (this.bufferContext.canvas.height - this.viewportContext.canvas.height) ) {
-				this.viewportOffset.y = this.bufferContext.canvas.height - this.viewportContext.canvas.height;
+			if( viewportOffset.y > (this.bufferContext.canvas.height - this.viewportContext.canvas.height) ) {
+				viewportOffset.y = this.bufferContext.canvas.height - this.viewportContext.canvas.height;
 			}
-			if( this.viewportOffset.x < 0 ) {
-				this.viewportOffset.x = BOARD_WIDTH;
+			if( viewportOffset.x < 0 ) {
+				viewportOffset.x = BOARD_WIDTH;
 				this.startPanning( x, y );
 			}
-			if( this.viewportOffset.x > BOARD_WIDTH ) {
-				this.viewportOffset.x = 0;
+			if( viewportOffset.x > BOARD_WIDTH ) {
+				viewportOffset.x = 0;
 				this.startPanning( x, y );
 			}	
 		},
