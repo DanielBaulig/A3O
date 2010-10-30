@@ -47,13 +47,22 @@ A3O = function () {
 		drawUnits: function( ) {
 			
 		},
-		drawInterface: function( useBuffer ) {
+		clearBoard: function ( dirtyRect ) {
 			var bufferContext = this.bufferContext;
-			if ( useBuffer ) {
-				//bufferContext.putImageData( this.boardBufferData, 0, 0 );
-				bufferContext.drawImage ( this.boardBuffer, 0, 0, BOARD_WIDTH, BOARD_HEIGHT );
-				//this.drawBoard( false );
-			}
+
+			bufferContext.save();
+			if ( dirtyRect ) {
+				this.setClipping( dirtyRect );
+			}			
+			//bufferContext.putImageData( this.boardBufferData, 0, 0 );
+			bufferContext.drawImage ( this.boardBuffer, 0, 0, BOARD_WIDTH, BOARD_HEIGHT );
+			//this.drawBoard( false );
+			bufferContext.restore();
+			
+		},
+		drawInterface: function( ) {
+			var bufferContext = this.bufferContext;
+			
 			// draw selected zone
 			if ( this.selectedZone ) {
 				var polygon = this.ressources.polygons[this.selectedZone].polygon;
@@ -84,7 +93,7 @@ A3O = function () {
 				bufferContext.restore();
 			}
 		},
-		drawBackgroundImages: function ( ) {
+		drawBackgroundImages: function ( clipRect ) {
 			var images = this.ressources.backgroundImages;
 		
 			for(var image in images) {
@@ -92,11 +101,12 @@ A3O = function () {
 				this.bufferContext.drawImage(image.image, image.x, image.y);
 			}	
 		},
-		drawZonePolygons: function( ) {
+		drawZonePolygons: function( clipRect ) {
 			var polygons = this.ressources.polygons;
 			var bufferContext = this.bufferContext;
 			var i;
 			bufferContext.save();
+			
 			bufferContext.strokeStyle = 'black';
 			bufferContext.lineWidth = 1;
 			bufferContext.fillStyle = 'pink';
@@ -131,6 +141,18 @@ A3O = function () {
 			bufferContext.restore();
 			if (typeof console != 'undefined')
 				console.log (c);
+		},
+		setClipping: function ( clipRect ) {
+			var bufferContext = this.bufferContext;
+			var ul = clipRect.ul;
+			var lr = clipRect.lr;
+			bufferContext.beginPath();
+			bufferContext.moveTo(ul[0],ul[1]);
+			bufferContext.lineTo(lr[0],ul[1]);
+			bufferContext.lineTo(lr[0],lr[0]);
+			bufferContext.lineTo(ul[0],lr[0]);
+			bufferContext.closePath();
+			bufferContext.clip();
 		},
 		swapBuffers: function( ) {
 			var viewportContext = this.viewportContext;
@@ -363,8 +385,11 @@ A3O = function () {
 			jQuery(this.viewportContext.canvas).click( function( e ) {
 				switch( e.which ) {
 					case 1:
+						if ( that.selectedZone ) {
+							that.clearBoard( that.ressources.polygons[that.selectedZone].boundingbox );
+						}
 						that.selectZone( e.pageX, e.pageY );
-						that.drawInterface( true );
+						that.drawInterface( );
 						that.swapBuffers( );
 				}
 			});
