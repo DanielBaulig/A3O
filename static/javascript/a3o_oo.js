@@ -6,7 +6,9 @@ A3O = function () {
 	const SELECT_GLOW_AMOUNT = 10;
 	
 	const DEBUGGING = true;
-	const DRAW_BOUNDING_BOXES = DEBUGGING;
+	const DRAW_BOUNDING_BOXES = DEBUGGING && false;
+	const DRAW_CENTERS = DEBUGGING && false;
+	const DRAW_PLACES = DEBUGGING && false;
 	
 	// HELPER FUNCTIONS
 	var createCallback = function (limit, fn) {
@@ -48,19 +50,59 @@ A3O = function () {
 		viewportOffset: {x:0,y:0},
 		viewportOffsetPanningStart: {x:0,y:0},
 		ressources: {},
-		drawBoard: function( saveBuffer ) {
-			this.drawBackgroundImages();
-			this.drawZonePolygons();			
-			this.drawUnits();			
+		drawBoard: function( saveBuffer, dirtyRect ) {
+			var bufferContext = this.bufferContext;
+			bufferContext.save();
+			
+			if ( dirtyRect ) {
+				this.setClipping(dirtyRect);
+			}
+			
+			this.drawBackgroundImages( );
+			this.drawZonePolygons( );			
 			if ( saveBuffer ) {
 				this.boardBuffer.src = this.bufferContext.canvas.toDataURL('image/png');
 				//this.boardBufferData = this.bufferContext.getImageData( 0, 0, BOARD_WIDTH, BOARD_HEIGHT );
 			}
+			bufferContext.restore();
 			if (typeof console != 'undefined')
 				console.log('drawBoard();');
 		},
-		drawUnits: function( ) {
+		drawUnits: function( dirtyRect ) {
+			var ressources = this.ressources;
+			var zones = ressources.game.zones;
+			var sprites = ressources.sprites;
+			var bufferContext = this.bufferContext;
 			
+			bufferContext.save();
+			
+			if (dirtyRect) {
+				this.setClipping( dirtyRect );
+			}				
+			
+			bufferContext.shadowOffsetX = 1;
+			bufferContext.shadowOffsetY = 1;
+			bufferContext.shadowBlur = 1;
+			bufferContext.shadowColor = 'black';
+			
+			for (var z in zones) {
+				var zone = zones[z];
+				var places = ressources.polygons[z].places;
+				var i = 0;
+				
+				for(var n in zone) {
+					var nation = zone[n];
+					
+					for(var u in nation) {
+						var unit = nation[u];
+						var place = places[i++];
+						
+						bufferContext.drawImage( sprites[n][u], place[0], place[1], 24, 24 );
+					}
+				}
+			}
+			
+			bufferContext.restore();
 		},
 		clearBoard: function ( dirtyRect ) {
 			var bufferContext = this.bufferContext;
@@ -87,7 +129,7 @@ A3O = function () {
 				
 				bufferContext.save();
 				bufferContext.strokeStyle = 'black';
-				bufferContext.lineWidth = 10;
+				bufferContext.lineWidth = 5;
 				bufferContext.fillStyle = 'red';
 				bufferContext.shadowOffsetX = 0;
 				bufferContext.shadowOffsetY = 0;
@@ -107,7 +149,7 @@ A3O = function () {
 				
 				bufferContext.closePath();
 				bufferContext.stroke();
-				bufferContext.fill();
+				//bufferContext.fill();
 				
 				bufferContext.restore();
 			}
@@ -123,7 +165,7 @@ A3O = function () {
 		drawZonePolygons: function( clipRect ) {
 			var polygons = this.ressources.polygons;
 			var bufferContext = this.bufferContext;
-			var i;
+			var i, center;
 			bufferContext.save();
 			
 			bufferContext.strokeStyle = 'black';
@@ -153,29 +195,60 @@ A3O = function () {
 				
 				// do something with the entire polygon structure
 				// ...
-				if (polygon.sz){
-					continue;
+				
+				// skip (s)ea(z)ones
+				if (!polygon.sz){
+					// get the vertex list
+					var vertices = polygon.polygon;
+					var length = vertices.length;
+					var point = null;
+					bufferContext.beginPath();
+					
+					if (length > 0) {
+						point = vertices[0];
+						bufferContext.moveTo( point[0], point[1] );	
+					}			
+					for(var i = 1; i < length; i++){
+						point = vertices[i];
+						bufferContext.lineTo( point[0], point[1] );
+						c++;
+					}
+					
+					bufferContext.closePath();
+					bufferContext.fill();
+					bufferContext.stroke();
 				}
 				
-				// get the vertex list
-				var vertices = polygon.polygon;
-				var length = vertices.length;
-				var point = null;
-				bufferContext.beginPath();
-				
-				if (length > 0) {
-					point = vertices[0];
-					bufferContext.moveTo( point[0], point[1] );	
-				}			
-				for(var i = 1; i < length; i++){
-					point = vertices[i];
-					bufferContext.lineTo( point[0], point[1] );
-					c++;
+				center = polygon.center;
+				if ( DRAW_CENTERS ) {
+					bufferContext.save();
+					bufferContext.fillStyle = 'black';
+					bufferContext.beginPath();
+					bufferContext.arc( center[0], center[1], 4, 0, 2*Math.PI, true );
+					bufferContext.closePath();
+					bufferContext.fill();
+					bufferContext.restore();
 				}
 				
-				bufferContext.closePath();
-				bufferContext.fill();
-				bufferContext.stroke();
+				bufferContext.save();
+				bufferContext.fillStyle = 'black';
+				var nameWidth = (bufferContext.measureText(polygon.name)).width;
+				bufferContext.fillText(polygon.name, center[0] - nameWidth/2, center[1]);
+				bufferContext.restore();
+				
+				if (DRAW_PLACES) {
+					bufferContext.save();
+					bufferContext.fillStyle = 'red';
+					places = polygon.places;
+					for (var place in places) {
+						place = places[place];
+						bufferContext.beginPath();
+						bufferContext.arc( place[0], place[1], 2, 0, 2*Math.PI, true );
+						bufferContext.closePath();
+						bufferContext.fill();
+					}
+					bufferContext.restore();
+				}
 			}
 			bufferContext.restore();
 			if (typeof console != 'undefined')
@@ -276,14 +349,32 @@ A3O = function () {
 				);
 			}
 		},
-		loadRessources: function ( doneCallback ) {
-			var delayedCallback = createCallback( 3, doneCallback );
+		loadRessources: function ( game, doneCallback ) {
+			var delayedCallback = createCallback( 4, doneCallback );
 			this.loadPolygons( delayedCallback );
 			this.loadBackgroundImages( delayedCallback );
 			this.loadSprites( delayedCallback );
+			this.loadGameData( game, delayedCallback );
 		},
 		loadSprites: function ( doneCallback ) {
-			doneCallback( );
+			var nations = ['Germany','Russia','China','USA','Britain','Japan'];
+			var units = ['infantry','armour','factory'];
+			var i,j, nlen = nations.length, ulen = units.length;
+			
+			var delayedCallback = createCallback( nlen * ulen, doneCallback );
+			this.ressources.sprites = {};
+			console.log('yeah');
+			for ( i = 0; i < nlen; i++ ) {
+				var nation = nations[i];
+				this.ressources.sprites[nation] = {};
+				for ( j = 0; j < ulen; j++ ) {
+					var unit = units[j];
+					var sprite = new Image();
+					sprite.onload = delayedCallback;
+					sprite.src = 'static/images/games/'+GAME_NAME+'/units/' + nation + '/' + unit + '.png';
+					this.ressources.sprites[nation][unit] = sprite;
+				}
+			}
 		},
 		loadPolygons: function( doneCallback ) {
 			var that = this;
@@ -340,6 +431,29 @@ A3O = function () {
 				}				
 			}
 		},
+		loadGameData: function ( game, doneCallback ) {
+			this.ressources.game = {
+					zones : {
+						Belorussia: {
+							Germany: {
+								infantry: 3,
+								armour: 1
+							},
+							Japan: {
+								infantry: 1
+							}
+						},
+						WesternGermany: {
+							Germany: {
+								infantry: 1,
+								armour: 1,
+								factory: 1
+							}
+						}
+					}
+			};
+			doneCallback();
+		},
 		transformCoordinates: function (x, y) {
 			var offset = jQuery(this.viewportContext.canvas).offset(); // this propably has a fucking big overhead!
 			x = x + this.viewportOffset.x - offset.left;
@@ -349,13 +463,12 @@ A3O = function () {
 			y = y + this.viewportOffset.y - offset.top;
 			return {x: x, y: y};
 		},
-		selectZone: function (x, y) {
+		getZoneAt: function (x, y) {
 			var polygons = this.ressources.polygons;
 			var coords = this.transformCoordinates(x, y);
 			x = coords.x;
 			y = coords.y;
-			if (typeof console != 'undefined')
-				console.log('X: ' + x + ' Y: ' + y);
+
 			for(var p in polygons) {
 				// store some local variables to speed things up
 				polygon = polygons[p];
@@ -368,14 +481,15 @@ A3O = function () {
 					{
 						// if it does, check if it is really inside the polygon
 						if ( isPointInPolygon(polygon.polygon, x, y)) {
-							if (typeof console != 'undefined')
-								console.log(polygon.name);
-							this.selectedZone = p;
-							return;
+							return p;
 						}
 					}
 				}				
 			}
+			return false;
+		},
+		selectZone: function (x, y) {
+			this.selectedZone = this.getZoneAt(x, y);
 		},
 		startPanning: function (x, y) {
 			this.panning = true;
@@ -413,6 +527,7 @@ A3O = function () {
 			bufferCanvas.height = BOARD_HEIGHT;
 			this.bufferContext = bufferCanvas.getContext('2d');
 			this.viewportContext = viewportContext;
+			this.isCooledDown = true;
 			var that = this;
 	
 			jQuery(this.viewportContext.canvas).mousedown( function( e ) {
@@ -433,18 +548,26 @@ A3O = function () {
 				if (that.panning) {
 					that.pan( e.screenX, e.screenY );
 					that.swapBuffers();
+				} else {
+					if (that.isCooledDown) {
+						that.isCooledDown = false;
+						if ( that.selectedZone ) {
+							var dirtyRect = expandRectangle(that.ressources.polygons[that.selectedZone].boundingbox, SELECT_GLOW_AMOUNT);
+							that.clearBoard( dirtyRect );
+							that.drawUnits( dirtyRect );
+						}
+						that.selectZone( e.pageX, e.pageY );
+						that.drawInterface( );
+						that.swapBuffers( );
+						setTimeout(function() { that.isCooledDown = true; }, 50);
+					}
 				}
 			});
 			
 			jQuery(this.viewportContext.canvas).click( function( e ) {
 				switch( e.which ) {
 					case 1:
-						if ( that.selectedZone ) {
-							that.clearBoard( expandRectangle(that.ressources.polygons[that.selectedZone].boundingbox, SELECT_GLOW_AMOUNT) );
-						}
-						that.selectZone( e.pageX, e.pageY );
-						that.drawInterface( );
-						that.swapBuffers( );
+						
 				}
 			});
 			
@@ -453,6 +576,7 @@ A3O = function () {
 			});
 			
 			this.drawBoard( true );
+			this.drawUnits( );	
 			this.swapBuffers();
 		}
 	};
