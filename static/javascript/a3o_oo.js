@@ -5,7 +5,7 @@ A3O = function () {
 	const BOARD_HEIGHT = 2278;
 	const SELECT_GLOW_AMOUNT = 10;
 	
-	const DEBUGGING = true;
+	const DEBUGGING = false;
 	const DRAW_BOUNDING_BOXES = DEBUGGING;
 	
 	// HELPER FUNCTIONS
