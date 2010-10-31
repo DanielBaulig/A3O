@@ -1,14 +1,18 @@
 A3O = function () { 
 	// CONSTANTS
 	const GAME_NAME = 'big_world';
+	
 	const BOARD_WIDTH = 4876;
 	const BOARD_HEIGHT = 2278;
 	const SELECT_GLOW_AMOUNT = 10;
+	const UNIT_WIDTH = 24;
+	const UNIT_HEIGHT = 24;
+	const UNIT_SHADOW = 2;
 	
-	const DEBUGGING = true;
-	const DRAW_BOUNDING_BOXES = DEBUGGING && false;
-	const DRAW_CENTERS = DEBUGGING && false;
-	const DRAW_PLACES = DEBUGGING && false;
+	const DEBUGGING = false;
+	const DRAW_BOUNDING_BOXES = DEBUGGING;
+	const DRAW_CENTERS = DEBUGGING;
+	const DRAW_PLACES = DEBUGGING;
 	
 	// HELPER FUNCTIONS
 	var createCallback = function (limit, fn) {
@@ -37,6 +41,7 @@ A3O = function () {
 		return c;
 	}
 	
+	// Expands a rectangle by expand pixels in each direction
 	var expandRectangle = function ( rectangle, expand ) {
 		var ul = rectangle.ul, lr = rectangle.lr;
 		return { ul: [ ul[0]-expand, ul[1]-expand ], lr: [ lr[0]+expand, lr[1]+expand ] };
@@ -45,10 +50,31 @@ A3O = function () {
 	
 	// A3O GAME OBJECT
 	return {
+		/**
+		 * @var Indicates if the player is currently panning the map.
+		 */
 		panning: false,
+		/**
+		 * @var While panning stores the position of the mouse when the panning started.
+		 */
 		panningStart: {x:0,y:0},
+		/**
+		 * @var Stores the offset of the viewport
+		 */
 		viewportOffset: {x:0,y:0},
+		/**
+		 * @var While panning stores the offset of the viewport when the panning started.
+		 */
 		viewportOffsetPanningStart: {x:0,y:0},
+		/**
+		 * @var Stores "grabbed" units (units, which are attached to the mouse cursor). 
+		 */
+		grabbed: {},
+		selectedZone: false,
+		selectedUnit: false,
+		/**
+		 * @var Stores all the static ressources of the game, like polygon data, images, etc.
+		 */
 		ressources: {},
 		drawBoard: function( saveBuffer, dirtyRect ) {
 			var bufferContext = this.bufferContext;
@@ -80,9 +106,9 @@ A3O = function () {
 				this.setClipping( dirtyRect );
 			}				
 			
-			bufferContext.shadowOffsetX = 1;
-			bufferContext.shadowOffsetY = 1;
-			bufferContext.shadowBlur = 1;
+			bufferContext.shadowOffsetX = UNIT_SHADOW / 2;
+			bufferContext.shadowOffsetY = UNIT_SHADOW / 2;
+			bufferContext.shadowBlur = UNIT_SHADOW / 2;
 			bufferContext.shadowColor = 'black';
 			
 			for (var z in zones) {
@@ -97,7 +123,9 @@ A3O = function () {
 						var unit = nation[u];
 						var place = places[i++];
 						
-						bufferContext.drawImage( sprites[n][u], place[0], place[1], 24, 24 );
+						if ( unit > 0 ) {
+							bufferContext.drawImage( sprites[n][u], place[0], place[1], UNIT_WIDTH, UNIT_HEIGHT );
+						}
 					}
 				}
 			}
@@ -117,9 +145,10 @@ A3O = function () {
 			bufferContext.restore();
 			
 		},
-		drawInterface: function( ) {
+		drawInterface: function( clipRect ) {
 			var bufferContext = this.bufferContext;
 			var selectedZone = this.selectedZone;
+			var selectedUnit = this.selectedUnit;
 			
 			// draw selected zone
 			if ( selectedZone ) {
@@ -128,6 +157,9 @@ A3O = function () {
 				var currentPolygon = null;
 				
 				bufferContext.save();
+				if ( clipRect ) {
+					this.setClipping( clipRect );
+				}
 				bufferContext.strokeStyle = 'black';
 				bufferContext.lineWidth = 5;
 				bufferContext.fillStyle = 'red';
@@ -150,6 +182,19 @@ A3O = function () {
 				bufferContext.closePath();
 				bufferContext.stroke();
 				//bufferContext.fill();
+				
+				bufferContext.restore();
+			}
+			
+			if ( selectedUnit ) {
+				var image = this.ressources.sprites[selectedUnit.nation][selectedUnit.unit];
+				var rect = this.getPlaceRect( selectedUnit.zone, selectedUnit.place );
+				
+				bufferContext.save();
+				bufferContext.globalCompositeOperation = 'lighter';
+				bufferContext.globalAlpha = 0.3;
+				
+				bufferContext.drawImage( image, rect.ul[0], rect.ul[1], UNIT_WIDTH, UNIT_HEIGHT );
 				
 				bufferContext.restore();
 			}
@@ -240,13 +285,16 @@ A3O = function () {
 					bufferContext.save();
 					bufferContext.fillStyle = 'red';
 					places = polygon.places;
-					for (var place in places) {
-						place = places[place];
+					var plen = places.length;
+					for (var i = 0; i < plen; i++ ) {
+						place = places[i];
 						bufferContext.beginPath();
 						bufferContext.arc( place[0], place[1], 2, 0, 2*Math.PI, true );
 						bufferContext.closePath();
 						bufferContext.fill();
+						//bufferContext.strokeText(i, place[0], place[1]);
 					}
+					
 					bufferContext.restore();
 				}
 			}
@@ -258,18 +306,7 @@ A3O = function () {
 			var bufferContext = this.bufferContext;
 			var ul = clipRect.ul;
 			var lr = clipRect.lr;
-			/*// draw bounding box for debugging
-			bufferContext.save();				
-			bufferContext.strokeStyle = 'green';				
-			bufferContext.beginPath();
-			bufferContext.moveTo(ul[0], ul[1]);
-			bufferContext.lineTo(ul[0], lr[1]);
-			bufferContext.lineTo(lr[0], lr[1]);
-			bufferContext.lineTo(lr[0], ul[1]);
-			bufferContext.closePath();
-			bufferContext.stroke();
-			bufferContext.restore();
-			// end boundingbox*/
+
 			bufferContext.beginPath();
 			bufferContext.moveTo(ul[0],ul[1]);
 			bufferContext.lineTo(ul[0],lr[1]);
@@ -379,9 +416,23 @@ A3O = function () {
 		loadPolygons: function( doneCallback ) {
 			var that = this;
 			jQuery.getJSON('static/json/games/'+GAME_NAME+'/polygons.json', function( data ) {
-					that.ressources.polygons = data;
-					for(var polygon in that.ressources.polygons) {
-						polygon = that.ressources.polygons[polygon];
+					var ressources = that.ressources;
+					ressources.placesRT = new RTree();
+					ressources.polygons = data;
+					for(var p in ressources.polygons) {
+						var polygon = ressources.polygons[p];
+						var places = polygon.places;
+						var plen = places.length;
+						
+						for(var i = 0; i < plen; i++) {
+							var place = places[i];
+							ressources.placesRT.insert( 
+								{ x: place[0], y: place[1], w: UNIT_WIDTH, h: UNIT_HEIGHT }, 
+								{ zone: p, index: i } );
+						}
+						
+						
+						
 						// HACK
 						if (polygon.name.match(/^SZ/))
 						{
@@ -450,7 +501,9 @@ A3O = function () {
 								factory: 1
 							}
 						}
-					}
+					},
+					active: "Germany",
+					youAre: "Germany"
 			};
 			doneCallback();
 		},
@@ -462,6 +515,72 @@ A3O = function () {
 			}				
 			y = y + this.viewportOffset.y - offset.top;
 			return {x: x, y: y};
+		},
+		/**
+		 * Gets information about the place at page coordinates x, y
+		 * @return { zone: the places' zone id, index: the places' index }
+		 */
+		getPlaceAt: function (x, y) {
+			var coords = this.transformCoordinates(x, y);
+			var placesRT = this.ressources.placesRT;
+			x = coords.x;
+			y = coords.y;
+			
+			var result = placesRT.search( {x: x, y: y, w: 1, h: 1 } );
+			if ( result.length ) {
+				return result;
+			} else {
+				return false;
+			}
+		},
+		/**
+		 * Gets the bounding rectangle of a place specified by zone and place.
+		 * @param zone The places' zones id
+		 * @param place The places' index
+		 * @return { ul: upper left corner coords, lr: lower right corner coords }
+		 */
+		getPlaceRect: function ( zone, place ) {
+			var p = this.ressources.polygons[zone].places[place];
+			return { ul: p, lr: [ p[0] + UNIT_WIDTH, p[1] + UNIT_HEIGHT ] };
+		},
+		/**
+		 * Returns the unit information of a unit in the specified place or false
+		 * if no unit is found.
+		 * @param zone The places' zone id
+		 * @param place The places' index
+		 * @return false or unit information object: { unit: id of the unit, nation: nationality of the unit, zone: zone id, see params, place: places' index, see params }
+		 */
+		getUnitInPlace: function ( zone, place ) {
+			var ressources = this.ressources;
+			var z = ressources.game.zones[zone];
+			var counter = place;
+			
+			for (var n in z) {
+				var nation = z[n];
+				for (var u in nation) {
+					if (!counter--) {
+						if ( nation[u] ) {
+							return { unit: u, nation: n, zone: zone, place: place, count: nation[u] };
+						} else {
+							return false;
+						}
+					}
+				}
+			}
+			return false;
+		},
+		/**
+		 * Gets the unit information for a unit at page coordinates x, y.
+		 * @param x,y Coordinates in page space as provided from jQuery event object (e.pageX, e.pageY)
+		 * @return false or unit information object: @see getUnitInPlace
+		 */
+		getUnitAt: function (x, y) {
+			// getPlaceAt CAN return multiple places, we'll just ignore that for now.
+			var place = this.getPlaceAt(x, y);
+			if (place.length) {
+				return this.getUnitInPlace( place[0].zone, place[0].index );
+			}
+			return false;
 		},
 		getZoneAt: function (x, y) {
 			var polygons = this.ressources.polygons;
@@ -490,6 +609,9 @@ A3O = function () {
 		},
 		selectZone: function (x, y) {
 			this.selectedZone = this.getZoneAt(x, y);
+		},
+		selectUnit: function (x, y) {
+			this.selectedUnit = this.getUnitAt(x, y);
 		},
 		startPanning: function (x, y) {
 			this.panning = true;
@@ -557,6 +679,7 @@ A3O = function () {
 							that.drawUnits( dirtyRect );
 						}
 						that.selectZone( e.pageX, e.pageY );
+						that.selectUnit( e.pageX, e.pageY );
 						that.drawInterface( );
 						that.swapBuffers( );
 						setTimeout(function() { that.isCooledDown = true; }, 50);
@@ -565,9 +688,20 @@ A3O = function () {
 			});
 			
 			jQuery(this.viewportContext.canvas).click( function( e ) {
+				var inc = -1;
 				switch( e.which ) {
 					case 1:
-						
+						var unitInfo;
+						if (unitInfo = that.getUnitAt( e.pageX, e.pageY )) {
+							if ( !--that.ressources.game.zones[unitInfo.zone][unitInfo.nation][unitInfo.unit] ) {
+								that.selectedUnit = false;
+							}
+							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW ) ;
+							that.clearBoard( placeRect );
+							that.drawUnits( placeRect );
+							that.drawInterface( placeRect );
+							that.swapBuffers( );
+						}	
 				}
 			});
 			

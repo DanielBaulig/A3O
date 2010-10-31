@@ -5,6 +5,7 @@
 	<title>Insert title here</title>
 	<script src="static/javascript/jquery-1.4.3.min.js"></script>
 	<script src="static/javascript/jquery.mousewheel.min.js"></script>
+	<script src="static/javascript/rtree.js"></script>
 	<script src="static/javascript/a3o_oo.js"></script>
 	<script type="text/javascript">
 		jQuery(document).ready(function(){
