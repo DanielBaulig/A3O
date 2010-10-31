@@ -1,12 +1,12 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE html>
 <html>
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
 	<title>Insert title here</title>
-	<script src="static/javascript/jquery-1.4.3.min.js"></script>
-	<script src="static/javascript/jquery.mousewheel.min.js"></script>
-	<script src="static/javascript/rtree.js"></script>
-	<script src="static/javascript/a3o_oo.js"></script>
+	<script type="text/javascript" src="static/javascript/jquery-1.4.3.min.js"></script>
+	<script type="text/javascript" src="static/javascript/jquery.mousewheel.min.js"></script>
+	<script type="text/javascript" src="static/javascript/rtree.js"></script>
+	<script type="text/javascript" src="static/javascript/a3o_oo.js"></script>
 	<script type="text/javascript">
 		jQuery(document).ready(function(){
 			A3O.loadRessources( <?php echo (int) $_REQUEST['g']; ?>, function(){ $('#loading').hide();  A3O.setup( document.getElementById('map').getContext('2d') ); });
@@ -43,10 +43,11 @@
 				<div class="button" onclick="A3O.drawUnits();A3O.swapBuffers();">Redraw Units</div>
 			</div>
 			<br/>
+			<p>
 			mouswheel: zoom map<br />
 			right mousbutton: pan map<br />
 			left mousebutton: find path<br /> 
 			All assets and static ressources found on this webpage are not part of this project but originate from the TripleA project and are licenced under GNU GPL.<br /> 
-			Please refer to <a href="http://triplea.sourceforge.net">http://triplea.sourceforge.net<a/> for more information on the TripleA project.
+			Please refer to <a href="http://triplea.sourceforge.net">http://triplea.sourceforge.net</a> for more information on the TripleA project.</p>
 </body>
 </html>
