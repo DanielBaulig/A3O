@@ -69,7 +69,10 @@ A3O = function () {
 		/**
 		 * @var Stores "grabbed" units (units, which are attached to the mouse cursor). 
 		 */
-		grabbed: {},
+		grabbed: {
+			origin: false,
+			units: []
+		},
 		selectedZone: false,
 		selectedUnit: false,
 		/**
@@ -110,6 +113,10 @@ A3O = function () {
 			bufferContext.shadowOffsetY = UNIT_SHADOW / 2;
 			bufferContext.shadowBlur = UNIT_SHADOW / 2;
 			bufferContext.shadowColor = 'black';
+			bufferContext.textBaseline = 'middle';
+			//bufferContext.lineWidth = 1;
+			bufferContext.fillStyle = 'white';	
+			bufferContext.font = 'bold 11pt Sans-serif';
 			
 			for (var z in zones) {
 				var zone = zones[z];
@@ -125,6 +132,9 @@ A3O = function () {
 						
 						if ( unit > 0 ) {
 							bufferContext.drawImage( sprites[n][u], place[0], place[1], UNIT_WIDTH, UNIT_HEIGHT );
+							if (this.stroke)
+								bufferContext.strokeText( unit, place[0] + Math.floor(UNIT_WIDTH/4), place[1] + UNIT_HEIGHT );
+							bufferContext.fillText( unit, place[0] + Math.floor(UNIT_WIDTH/4), place[1] + UNIT_HEIGHT );
 						}
 					}
 				}
@@ -613,6 +623,31 @@ A3O = function () {
 		selectUnit: function (x, y) {
 			this.selectedUnit = this.getUnitAt(x, y);
 		},
+		grabUnit: function ( unitInfo ) {
+			if ( unitInfo ) {
+				var grabbed = this.grabbed;
+				if ( unitInfo.nation  == this.ressources.game.youAre ) {
+					if ( !grabbed.origin || grabbed.origin == unitInfo.zone ) {
+						grabbed.origin = unitInfo.zone;
+						grabbed.units.push(unitInfo);
+						if (!--this.ressources.game.zones[grabbed.origin][this.ressources.game.youAre][unitInfo.unit]) {
+							this.selectedUnit = false;
+						}
+					} 
+				}
+			}
+		},
+		dropUnit: function () {
+			var grabbed = this.grabbed;
+			if ( grabbed.origin ) {
+				var unitInfo = grabbed.units.pop();
+				this.ressources.game.zones[grabbed.origin][this.ressources.game.youAre][unitInfo.unit]++;
+				if (!grabbed.units.length) {
+					grabbed.origin = false;
+				}
+				return unitInfo;
+			}
+		},
 		startPanning: function (x, y) {
 			this.panning = true;
 			this.panningStart.x = x;
@@ -688,15 +723,14 @@ A3O = function () {
 			});
 			
 			jQuery(this.viewportContext.canvas).click( function( e ) {
-				var inc = -1;
 				switch( e.which ) {
 					case 1:
 						var unitInfo;
 						if (unitInfo = that.getUnitAt( e.pageX, e.pageY )) {
-							if ( !--that.ressources.game.zones[unitInfo.zone][unitInfo.nation][unitInfo.unit] ) {
-								that.selectedUnit = false;
-							}
-							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW ) ;
+							
+							that.grabUnit( unitInfo );
+							
+							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + 10 ) ;
 							that.clearBoard( placeRect );
 							that.drawUnits( placeRect );
 							that.drawInterface( placeRect );
@@ -706,6 +740,17 @@ A3O = function () {
 			});
 			
 			jQuery(this.viewportContext.canvas).bind( 'contextmenu', function( e ) {
+				switch( e.which ) {
+				case 3:
+					var unitInfo = that.dropUnit();
+					if (unitInfo) {
+						var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + 10 ) ;
+						that.clearBoard( placeRect );
+						that.drawUnits( placeRect );
+						that.drawInterface( placeRect );
+						that.swapBuffers( );
+					}	
+			}
 				return false;
 			});
 			

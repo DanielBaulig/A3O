@@ -41,6 +41,7 @@
 			<div style="float:right">
 				<div class="button" onclick="A3O.drawBoard(false);A3O.swapBuffers();">Redraw Board</div>
 				<div class="button" onclick="A3O.drawUnits();A3O.swapBuffers();">Redraw Units</div>
+				Stroke on Unit Counter (this will trigger a Bug in Firefox)<input type="checkbox" onchange="A3O.stroke = !A3O.stroke;"/>
 			</div>
 			<br/>
 			<p>
