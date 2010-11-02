@@ -29,6 +29,19 @@
 			border: 2px solid black;
 			background-color: light-pink;
 		}
+		#map 
+		{
+			/* prevent selection of canvas.
+			 * most browser allow selection of elements by double clicking. 
+			 * because double clicks are a regular A3O user interaction we
+			 * need to prevent the browser from selecting the canvas upon
+			 * double click or else the user will constantly select the 
+			 * canvas and other elements.
+			 */
+			-moz-user-select: none; 
+    		-khtml-user-select: none;
+		
+		}
 	</style>
 </head>
 <body>
@@ -41,7 +54,6 @@
 			<div style="float:right">
 				<div class="button" onclick="A3O.drawBoard(false);A3O.swapBuffers();">Redraw Board</div>
 				<div class="button" onclick="A3O.drawUnits();A3O.swapBuffers();">Redraw Units</div>
-				Stroke on Unit Counter (this will trigger a Bug in Firefox)<input type="checkbox" onchange="A3O.stroke = !A3O.stroke;"/>
 			</div>
 			<br/>
 			<p>

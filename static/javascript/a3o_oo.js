@@ -75,6 +75,7 @@ A3O = function () {
 		},
 		selectedZone: false,
 		selectedUnit: false,
+		panned: false,
 		/**
 		 * @var Stores all the static ressources of the game, like polygon data, images, etc.
 		 */
@@ -116,7 +117,8 @@ A3O = function () {
 			bufferContext.textBaseline = 'middle';
 			//bufferContext.lineWidth = 1;
 			bufferContext.fillStyle = 'white';	
-			bufferContext.font = 'bold 11pt Sans-serif';
+			bufferContext.strokeStyle = 'black';
+			bufferContext.font = 'bold 10pt Sans-serif';
 			
 			for (var z in zones) {
 				var zone = zones[z];
@@ -132,9 +134,14 @@ A3O = function () {
 						
 						if ( unit > 0 ) {
 							bufferContext.drawImage( sprites[n][u], place[0], place[1], UNIT_WIDTH, UNIT_HEIGHT );
-							if (this.stroke)
+							if (unit > 1) {
+								
+								bufferContext.beginPath();
 								bufferContext.strokeText( unit, place[0] + Math.floor(UNIT_WIDTH/4), place[1] + UNIT_HEIGHT );
-							bufferContext.fillText( unit, place[0] + Math.floor(UNIT_WIDTH/4), place[1] + UNIT_HEIGHT );
+								bufferContext.closePath();
+							
+								bufferContext.fillText( unit, place[0] + Math.floor(UNIT_WIDTH/4), place[1] + UNIT_HEIGHT );
+							}
 						}
 					}
 				}
@@ -194,8 +201,7 @@ A3O = function () {
 				//bufferContext.fill();
 				
 				bufferContext.restore();
-			}
-			
+			}			
 			if ( selectedUnit ) {
 				var image = this.ressources.sprites[selectedUnit.nation][selectedUnit.unit];
 				var rect = this.getPlaceRect( selectedUnit.zone, selectedUnit.place );
@@ -208,6 +214,37 @@ A3O = function () {
 				
 				bufferContext.restore();
 			}
+		},
+		lastCursorAttachmentRect: false,
+		clearLastCursorAttachment: function() {
+			var last = this.lastCursorAttachmentRect;
+			if ( last ) {
+				this.clearBoard( last );
+				this.drawUnits( last );
+				this.drawInterface( last );
+			}
+		},
+		drawCursorAttachment: function ( x, y ) {
+			var coords = this.transformCoordinates(x,y);
+			x = coords.x;
+			y = coords.y;
+			var bufferContext = this.bufferContext;
+			var grabbed = this.grabbed;
+			
+			if ( grabbed.origin ) {
+				var units = grabbed.units;
+				var ulen = units.length;
+				for (var i = 0; i < ulen; i++ ) {
+					var unit = units[i];
+					var image = this.ressources.sprites[unit.nation][unit.unit];
+
+					bufferContext.drawImage( image, x + UNIT_WIDTH * i, y + UNIT_HEIGHT * i, UNIT_WIDTH, UNIT_HEIGHT );
+				}
+				this.lastCursorAttachmentRect = { ul: [x,y], lr: [x + UNIT_WIDTH * i, y + UNIT_HEIGHT * i ] };
+			} else {
+				this.lastCursorAttachmentRect = false;
+			}
+
 		},
 		drawBackgroundImages: function ( clipRect ) {
 			var images = this.ressources.backgroundImages;
@@ -579,6 +616,25 @@ A3O = function () {
 			}
 			return false;
 		},
+		getPlaceOf: function( zone, unit, nation ) {
+			console.log(zone);
+			console.log(unit);
+			console.log(nation);
+			var z = this.ressources.game.zones[zone];
+			var counter = 0;
+			
+			for (var n in z) {
+				var _n = z[n];
+				for (var u in _n) {
+					if ( u == unit && n == nation ) {
+						return counter;
+					} else {
+						counter++;
+					}
+				}
+			}
+			return -1;
+		},
 		/**
 		 * Gets the unit information for a unit at page coordinates x, y.
 		 * @param x,y Coordinates in page space as provided from jQuery event object (e.pageX, e.pageY)
@@ -637,19 +693,37 @@ A3O = function () {
 				}
 			}
 		},
-		dropUnit: function () {
+		dropUnit: function ( zone ) {
 			var grabbed = this.grabbed;
-			if ( grabbed.origin ) {
+			if ( zone ) {
 				var unitInfo = grabbed.units.pop();
-				this.ressources.game.zones[grabbed.origin][this.ressources.game.youAre][unitInfo.unit]++;
+				var ressources = this.ressources;
+				var game = ressources.game;
+				var zones = game.zones;
+				
+				if ( !zones[zone] ) {
+					zones[zone] = {};
+				}
+				if ( !zones[zone][unitInfo.nation] ) {
+					zones[zone][unitInfo.nation] = {};
+				}
+				if ( !zones[zone][unitInfo.nation][unitInfo.unit] ) {
+					zones[zone][unitInfo.nation ][unitInfo.unit] = 0;
+				}
+				zones[zone][unitInfo.nation ][unitInfo.unit]++;
 				if (!grabbed.units.length) {
 					grabbed.origin = false;
 				}
+				unitInfo.zone = zone;
+				unitInfo.place = this.getPlaceOf( zone, unitInfo.unit, unitInfo.nation  );
 				return unitInfo;
 			}
 		},
+		returnUnit: function () {
+			return this.dropUnit(this.grabbed.origin);
+		},
 		startPanning: function (x, y) {
-			this.panning = true;
+			this.panning = true;			
 			this.panningStart.x = x;
 			this.panningStart.y = y;
 			this.viewportOffsetPanningStart.x = this.viewportOffset.x;
@@ -703,30 +777,47 @@ A3O = function () {
 			
 			jQuery(this.viewportContext.canvas).mousemove( function( e ) {
 				if (that.panning) {
+					that.panned = true;
 					that.pan( e.screenX, e.screenY );
 					that.swapBuffers();
 				} else {
 					if (that.isCooledDown) {
 						that.isCooledDown = false;
+						that.clearLastCursorAttachment( );
 						if ( that.selectedZone ) {
 							var dirtyRect = expandRectangle(that.ressources.polygons[that.selectedZone].boundingbox, SELECT_GLOW_AMOUNT);
 							that.clearBoard( dirtyRect );
 							that.drawUnits( dirtyRect );
 						}
+						
+						
 						that.selectZone( e.pageX, e.pageY );
 						that.selectUnit( e.pageX, e.pageY );
 						that.drawInterface( );
+						that.drawCursorAttachment( e.pageX, e.pageY );
 						that.swapBuffers( );
-						setTimeout(function() { that.isCooledDown = true; }, 50);
+						setTimeout(function() { that.isCooledDown = true; }, 25);
 					}
 				}
 			});
 			
 			jQuery(this.viewportContext.canvas).click( function( e ) {
+				var x = e.pageX, y = e.pageY;
 				switch( e.which ) {
 					case 1:
-						var unitInfo;
-						if (unitInfo = that.getUnitAt( e.pageX, e.pageY )) {
+						var unitInfo, zone;
+						
+						if ( that.grabbed.origin && that.grabbed.origin != (zone = that.getZoneAt( x, y ) ) ) {
+							unitInfo = that.dropUnit( zone );
+							console.log( unitInfo );
+							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + 10 ) ;
+							that.clearLastCursorAttachment( );
+							that.clearBoard( placeRect );
+							that.drawUnits( placeRect );
+							that.drawInterface( placeRect );
+							that.drawCursorAttachment( x, y );
+							that.swapBuffers( );
+						} else if (unitInfo = that.getUnitAt( x, y )) {
 							
 							that.grabUnit( unitInfo );
 							
@@ -734,23 +825,33 @@ A3O = function () {
 							that.clearBoard( placeRect );
 							that.drawUnits( placeRect );
 							that.drawInterface( placeRect );
+							that.drawCursorAttachment( x, y );
 							that.swapBuffers( );
-						}	
+						}
 				}
 			});
 			
 			jQuery(this.viewportContext.canvas).bind( 'contextmenu', function( e ) {
 				switch( e.which ) {
 				case 3:
-					var unitInfo = that.dropUnit();
-					if (unitInfo) {
-						var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + 10 ) ;
-						that.clearBoard( placeRect );
-						that.drawUnits( placeRect );
-						that.drawInterface( placeRect );
-						that.swapBuffers( );
-					}	
+					if (!that.panned) {
+						var unitInfo = that.returnUnit();
+						if (unitInfo) {
+							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + 10 ) ;
+							that.clearLastCursorAttachment( );
+							that.clearBoard( placeRect );
+							that.drawUnits( placeRect );
+							that.drawInterface( placeRect );
+							that.drawCursorAttachment( e.pageX, e.pageY );
+							that.swapBuffers( );
+						}	
+					}
 			}
+				that.panned = false;
+				return false;
+			});
+			
+			jQuery(this.viewportContext.canvas).dblclick(function() {
 				return false;
 			});
 			
