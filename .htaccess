@@ -1,0 +1,3 @@
+RewriteEngine on
+RewriteBase /A3O/
+RewriteRule ^([0-9]+)$ index.php?g=$1 [NC,L]

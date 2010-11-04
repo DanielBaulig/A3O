@@ -2,28 +2,49 @@
 
 class A3MatchZonePDOFactory extends MatchZonePDOFactory
 {
+	protected $m_loadIncomingConnectionsSingleGameZone;
+	public function __construct($pdo, $match)
+	{
+		parent::__construct($pdo, $match);
+		
+		$connections_sql =
+			'SELECT bz2.basezone_name AS zone FROM a3o_zones AS z INNER JOIN a3o_basezones AS bz'
+			. ' ON bz.basezone_id = z.zone_basezone INNER JOIN a3o_connections AS c ON'
+			. ' c.connection_secondzone = bz.basezone_id INNER JOIN a3o_basezones AS bz2'
+			. ' ON bz2.basezone_id = c.connection_firstzone WHERE z.zone_id = :zone_id;';
+		
+		$this->m_loadIncomingConnectionsSingleGameZone = $this->m_pdo->prepare( $connections_sql );
+	}
 	protected function createObject( array $data )
 	{
 		return new A3MatchZone( $this->m_match, $data );
+	}
+	
+	protected function loadIncomingConnections($zone_id)
+	{
+		$this->m_loadIncomingConnectionsSingleGameZone->bindValue( ':zone_id', $zone_id, PDO::PARAM_INT );
+		$this->m_loadIncomingConnectionsSingleGameZone->execute( );
+		$connections = array ( );
+		while ( $connection = $this->m_loadIncomingConnectionsSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+		{
+			$connections[$connection['zone']] = true;
+		}
+		return $connections;
+	}
+	
+	protected function loadOutgoingConnections($zone_id)
+	{
+		return parent::loadConnections($zone_id);
+	}
+	
+	protected function loadConnections($zone_id) 
+	{
+		return array_merge( $this->loadIncomingConnections($zone_id), $this->loadOutgoingConnections($zone_id) );
 	}
 }
 
 class A3MatchZone extends MatchZone
 {
-	/** Checks if this zone has a connection to the given zone.
-	 * 
-	 * Note that the zone checks in both directions and thus presumes
-	 * connections are always bidirectional.
-	 * 
-	 * @param string $zone
-	 * @return boolean
-	 */
-	public function hasConnection( $zone )
-	{
-		return parent::hasConnection( $zone ) || 
-			array_key_exists( $this->m_data[self::NAME], $this->m_state->getZone( $zone )->m_data[self::CONNECTIONS] );
-	}
-	
 	public function isImpassible( ) 
 	{
 		return (boolean) $this->getOption( 'impassible' );
