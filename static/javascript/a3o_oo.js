@@ -22,7 +22,115 @@ A3O = function () {
 				fn();
 	        }
 	    };
-	}
+	};
+	
+/*	var createConvexHull = function( points ) {
+		points.sort( function(e1, e2) {
+			return e1[0] - e2[0];
+		} );
+		var i = points.length;
+		var hull = [ points[--i] ], top = [ points[--i] ], hullstack;
+		
+		do {
+			var hlen = hull.length;
+			if (top && hlen == top.length) {
+				var hull_low = hull[hlen-1], top_low = top[0];
+				
+				for (var j = 1; j < hlen; j++ ) {
+					var currentHull = hull[hlen-j-1];
+					hull_low = hull_low[1] > currentHull[1] ? currentHull : hull_low;
+					top_low
+				}
+				// vereinigen in hull;
+				
+				
+				top = hullstack.pop();
+			} else {
+				hulstack.push(top);
+				top = hull;
+				hull = [ points[--i] ];		
+			}
+			
+		} while ( i > 1 )
+	};*/
+	
+	var createControlPoints = function( anchors ) {
+		var controlPoints = [];
+		var alen = anchors.length;
+		
+		if ( alen != 0 ) {
+			// the first control point is our first anchor point
+			controlPoints.push ( anchors[0].slice() );
+		}		
+		
+		// now we build the other control points for all anchors
+		// between the first and the alst anchor point (not directly
+		// including the first and the last anchor point)
+		--alen;
+		for (var i = 1; i < alen; i++ ) {
+			
+			var previous = anchors[i-1], current = anchors[i], next = anchors[i+1];
+			var currentX = current[0], currentY = current[1];
+			var previousX = previous[0], previousY = previous[1];
+			
+			// build vector from previous point to current point
+			var vectorX = currentX - previousX; 
+			var vectorY = currentY - previousY;
+			// get length of the vector
+			var firstEdgeLength = Math.sqrt( vectorX * vectorX + vectorY * vectorY); 
+			// reduce vector to half length
+			vectorX = vectorX / 2;
+			vectorY = vectorY / 2;
+			// get point A as middle point of the edge between
+			// previous and current point
+			var firstAX = previousX + vectorX
+			var firstAY = previousY + vectorY;
+			
+			// repeat this for current and next point
+			vectorX = next[0] - currentX;
+			vectorY = next[1] - currentY;
+			
+			var secondEdgeLength = Math.sqrt( vectorX * vectorX + vectorY * vectorY );
+			
+			vectorX = vectorX / 2;
+			vectorY = vectorY / 2;
+			
+			var secondAX = currentX + vectorX;
+			var secondAY = currentY + vectorY;
+			
+			// now build a vector from firstA to secondA. along this edge
+			// we will find our point B.
+			// where point B is placed along this vector equals the 
+			// ratio of firstEdgeLength and secondEdgeLength. 
+			
+			var ratio = firstEdgeLength / (firstEdgeLength + secondEdgeLength);
+			
+			vectorX = (secondAX - firstAX) * ratio + firstAX;
+			vectorY = (secondAY - firstAY) * ratio + firstAY;
+			
+			// so we got our point B. next we will create the vector that 
+			// points from B to the current point and move our A points
+			// along that vector. the moved A points are our control points!
+			vectorX = currentX - vectorX;
+			vectorY = currentY - vectorY;
+			
+			// save our control points :)
+			controlPoints.push( [firstAX + vectorX, firstAY + vectorY] );
+			controlPoints.push( [secondAX + vectorX, secondAY + vectorY] );
+		};
+		
+		if (alen > 0) { 
+			// note that alen was reduced by 1 at the beginning of the 
+			// for loop, so alen > 0 actually means "if there are at least
+			// 2 elements present" - and not one.
+			// i should point to the last element after the loop.
+			
+			// the last control point is our last anchor point
+			controlPoints.push ( anchors[i] );
+		};
+		
+		return controlPoints;
+	};
 	
 	// based on the C-code from http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
 	// added some JS optimizations (reducing scope lookups).
@@ -39,17 +147,18 @@ A3O = function () {
 			}
 		}
 		return c;
-	}
+	};
 	
 	// Expands a rectangle by expand pixels in each direction
 	var expandRectangle = function ( rectangle, expand ) {
 		var ul = rectangle.ul, lr = rectangle.lr;
 		return { ul: [ ul[0]-expand, ul[1]-expand ], lr: [ lr[0]+expand, lr[1]+expand ] };
-	}
+	};
 	
 	
 	// A3O GAME OBJECT
 	return {
+		bezierControlPoints: [],
 		/**
 		 * @var Indicates if the player is currently panning the map.
 		 */
@@ -100,7 +209,7 @@ A3O = function () {
 		},
 		drawUnits: function( dirtyRect ) {
 			var ressources = this.ressources;
-			var zones = ressources.game.zones;
+			var zones = ressources.match.zones;
 			var sprites = ressources.sprites;
 			var bufferContext = this.bufferContext;
 			
@@ -168,7 +277,7 @@ A3O = function () {
 			var selectedUnit = this.selectedUnit;
 			
 			// draw selected zone
-			if ( selectedZone ) {
+			/*if ( selectedZone ) {
 				var polygon = this.ressources.polygons[selectedZone].polygon;
 				var length = polygon.length;
 				var currentPolygon = null;
@@ -201,7 +310,7 @@ A3O = function () {
 				//bufferContext.fill();
 				
 				bufferContext.restore();
-			}			
+			}*/			
 			if ( selectedUnit ) {
 				var image = this.ressources.sprites[selectedUnit.nation][selectedUnit.unit];
 				var rect = this.getPlaceRect( selectedUnit.zone, selectedUnit.place );
@@ -215,20 +324,11 @@ A3O = function () {
 				bufferContext.restore();
 			}
 		},
-		lastCursorAttachmentRect: false,
-		clearLastCursorAttachment: function() {
-			var last = this.lastCursorAttachmentRect;
-			if ( last ) {
-				this.clearBoard( last );
-				this.drawUnits( last );
-				this.drawInterface( last );
-			}
-		},
-		drawCursorAttachment: function ( x, y ) {
-			var coords = this.transformCoordinates(x,y);
-			x = coords.x;
-			y = coords.y;
-			var bufferContext = this.bufferContext;
+		drawGrabbedUnits: function ( x, y ) {
+			var viewportContext = this.viewportContext;
+			var coords = jQuery(viewportContext.canvas).offset();
+			x = x - coords.left;
+			y = y - coords.top;
 			var grabbed = this.grabbed;
 			
 			if ( grabbed.origin ) {
@@ -237,15 +337,164 @@ A3O = function () {
 				for (var i = 0; i < ulen; i++ ) {
 					var unit = units[i];
 					var image = this.ressources.sprites[unit.nation][unit.unit];
-
-					bufferContext.drawImage( image, x + UNIT_WIDTH * i, y + UNIT_HEIGHT * i, UNIT_WIDTH, UNIT_HEIGHT );
+					viewportContext.drawImage( image, x + UNIT_WIDTH * i, y + UNIT_HEIGHT * i, UNIT_WIDTH, UNIT_HEIGHT );
 				}
-				this.lastCursorAttachmentRect = { ul: [x,y], lr: [x + UNIT_WIDTH * i, y + UNIT_HEIGHT * i ] };
-			} else {
-				this.lastCursorAttachmentRect = false;
 			}
 
 		},
+		drawTargetSeeker: function( start, end ) {
+			
+		},
+		_drawBezierStrip: function( anchors, controlpoints, context ) {
+			var alen = anchors.length, clen = controlpoints.length;
+			
+			
+			if (alen * 2 - 2 != clen)
+			{
+				throw "number of anchorpoints does not suite number of controlpoints";
+			}
+			
+			var anchor = anchors[0];
+			
+			context.beginPath();
+			context.moveTo( anchor[0], anchor[1] );
+			
+			for (var i = 1; i < alen; i++ ) 
+			{
+				anchor = anchors[i]; 
+				var c = i * 2;
+				var cp1 = controlpoints[c - 2], cp2 = controlpoints[c - 1];
+				
+				context.bezierCurveTo( cp1[0], cp1[1], cp2[0], cp2[1], anchor[0], anchor[1] );
+			}
+			context.stroke();
+		},
+		drawPathIndicator: function ( path ) {
+			var zone, plen = path.length, anchors = [], aX, aY;
+			var viewportContext = this.viewportContext, viewportOffset = this.viewportOffset;
+			
+			viewportContext.save();
+			viewportContext.lineWidth = 10;
+			viewportContext.strokeStyle = 'red';
+			for (var i = 0; i < plen; i++ ) {
+				zone = this.ressources.polygons[path[i]].center;
+				aX = zone[0] - viewportOffset.x;
+				aY = zone[1] - viewportOffset.y;
+				
+				anchors.push( [aX, aY] );
+			}
+			this._drawBezierStrip( anchors, createControlPoints(anchors), viewportContext );
+			viewportContext.restore();
+		},
+		/*drawBezierStrip: function( anchors ) {
+			// we'll first check if our bezier strip passes the "wrapping edge"
+			// where the ends of our world map are wrapped around like on a 
+			// torus. if we do pass the wrapping edge we will have to handle
+			// this gap specially, or else the strip will be built actually not
+			// crossing the wrapping edge, but span all around the world in the
+			// other direction what is no what we want.
+			var alen = anchors.length;
+			
+			if (alen < 3) {
+				// we want at least 3 points. If there are only 2 points then
+				// we should not draw the bezier strip, but the "target pointer"
+				// which basicly is an arrow.
+				return;
+			}
+			
+			var halfBoard = BOARD_WIDTH / 2;
+			for (var i = 1; i < alen; i++) {
+				if ( Math.abs(anchors[i][0] - anchors[i-1][0]) > halfBoard ) {
+					// this is a huge gap! the shortest way connecting those 
+					// anchors is by passing the wrapping edge. we will handle 
+					// the edge by cutting our stip into two sub-strips. then we 
+					// will copy the last element of the first sub-strip and put 
+					// it at the beginning of the second sub-strip. of the scond 
+					// sub-strip we will copy the first element and put it at the 
+					// end of the first sub-strip.
+					// then we will substract BOARD_WIDTH of the bigger of the
+					// two just copied elements and add BOARD_WIDTH to the 
+					// smaller of the two just copied elements.
+					// this will create two strips that share a single anchor point 
+					// in a "wrapped" world. One of the strips will "overdraw" on
+					// the left edge and the other will "overdraw" on the right 
+					// edge which will lead to a connected strip, if both edges
+					// are drawn next to each other.
+					// but lets get started :)
+					
+					var firstStrip = anchors.slice(0, i);
+					// make a copy of the array in firstStrip[i-1]
+					var lastElement = firstStrip[i-1].slice();
+					var secondStrip = anchors.slice(i);
+					// make a copy of the array in secondStrip[0]
+					var firstElement = secondStrip[0].slice();
+					
+					if (firstElement[0] > lastElement[0] ) {
+						firstElement[0] -= BOARD_WIDTH;
+						lastElement[0] += BOARD_WIDTH;
+					} else {
+						firstElement[0] += BOARD_WIDTH;
+						lastElement[0] -= BOARD_WIDTH;
+					}
+						
+					
+					firstStrip.push(firstElement);
+					secondStrip.unshift(lastElement);
+					
+					// get the controlpoints fot our substrips
+					var firstStripControlpoints = createControlPoints( firstStrip );
+					var secondStripControlpoints = createControlPoints ( secondStrip );
+					
+					// the last controlpoint in our firstStripControlpoints array
+					// and the first controlpoint in our secondStripControlpoints
+					// are equivalent to their respective first and last anchor
+					// points. This is fine if drawing a dedicated bezier strip, BUT
+					// it won't let our two strips blend nicely.
+					// what we need to do is to grab the second last control point
+					// of our first strip and make it the first control point in
+					// our second strip and take the second control point in our
+					// second strip and make it the last controlpoint in our first 
+					// strip. basicly redoing what we have done for the anchor
+					// points with the control points but this time not appending them
+					// but overriding them.
+					var firstCPLength = firstStripControlpoints.length;
+					firstStripControlpoints[firstCPLength-1] = secondStripControlpoints[1].slice();
+					secondStripControlpoints[0] = firstStripControlpoints[firstCPLength-2].slice();
+					
+					if ( firstStripControlpoints[firstCPLength-1] > secondStripControlpoints[0] ) {
+						firstStripControlpoints[firstCPLength-1][0] -= BOARD_WIDTH;
+						secondStripControlpoints[0][0] += BOARD_WIDTH;
+					} else {
+						firstStripControlpoints[firstCPLength-1][0] += BOARD_WIDTH;
+						secondStripControlpoints[0][0] -= BOARD_WIDTH;
+					}
+					
+					this._drawBezierStrip( firstStrip, firstStripControlpoints );
+					this._drawBezierStrip( secondStrip, secondStripControlpoints );
+					return [ firstStripControlpoints, secondStripControlpoints ];
+				}
+			}
+			var cp = createControlPoints( anchors );
+			this._drawBezierStrip( anchors, cp );
+			return [ cp ];
+		},*/
+		clearBezierStrip: function( controlpoints ) {
+			var clen = controlpoints.length;
+			var bufferContext = this.bufferContext;
+			bufferContext.save();
+			bufferContext.strokeStyle= 'red';
+			bufferContext.beginPath();
+			for (var i = 2; i < clen; i++ ) {
+				var one = controlpoints[i-2], two = controlpoints[i-1], three = controlpoints[i];
+				bufferContext.moveTo( one[0], one[1] );
+				bufferContext.lineTo( two[0], two[1] );
+				bufferContext.lineTo( three[0], three[1] );
+			}
+			bufferContext.lineTo( controlpoints[0][0], controlpoints[0][1] );
+			bufferContext.clip();
+			this.clearBoard();
+			bufferContext.restore();
+		}, 
 		drawBackgroundImages: function ( clipRect ) {
 			var images = this.ressources.backgroundImages;
 		
@@ -433,12 +682,12 @@ A3O = function () {
 				);
 			}
 		},
-		loadRessources: function ( game, doneCallback ) {
+		loadRessources: function ( match, doneCallback ) {
 			var delayedCallback = createCallback( 4, doneCallback );
 			this.loadPolygons( delayedCallback );
 			this.loadBackgroundImages( delayedCallback );
 			this.loadSprites( delayedCallback );
-			this.loadGameData( game, delayedCallback );
+			this.loadMatchData( match, delayedCallback );
 		},
 		loadSprites: function ( doneCallback ) {
 			var nations = ['Germany','Russia','China','USA','Britain','Japan'];
@@ -529,8 +778,8 @@ A3O = function () {
 				}				
 			}
 		},
-		loadGameData: function ( game, doneCallback ) {
-			this.ressources.game = {
+		loadMatchData: function ( match, doneCallback ) {
+			this.ressources.match = {
 					zones : {
 						Belorussia: {
 							Germany: {
@@ -599,7 +848,7 @@ A3O = function () {
 		 */
 		getUnitInPlace: function ( zone, place ) {
 			var ressources = this.ressources;
-			var z = ressources.game.zones[zone];
+			var z = ressources.match.zones[zone];
 			var counter = place;
 			
 			for (var n in z) {
@@ -617,10 +866,7 @@ A3O = function () {
 			return false;
 		},
 		getPlaceOf: function( zone, unit, nation ) {
-			console.log(zone);
-			console.log(unit);
-			console.log(nation);
-			var z = this.ressources.game.zones[zone];
+			var z = this.ressources.match.zones[zone];
 			var counter = 0;
 			
 			for (var n in z) {
@@ -682,11 +928,11 @@ A3O = function () {
 		grabUnit: function ( unitInfo ) {
 			if ( unitInfo ) {
 				var grabbed = this.grabbed;
-				if ( unitInfo.nation  == this.ressources.game.youAre ) {
+				if ( unitInfo.nation  == this.ressources.match.youAre ) {
 					if ( !grabbed.origin || grabbed.origin == unitInfo.zone ) {
 						grabbed.origin = unitInfo.zone;
 						grabbed.units.push(unitInfo);
-						if (!--this.ressources.game.zones[grabbed.origin][this.ressources.game.youAre][unitInfo.unit]) {
+						if (!--this.ressources.match.zones[grabbed.origin][this.ressources.match.youAre][unitInfo.unit]) {
 							this.selectedUnit = false;
 						}
 					} 
@@ -698,8 +944,8 @@ A3O = function () {
 			if ( zone ) {
 				var unitInfo = grabbed.units.pop();
 				var ressources = this.ressources;
-				var game = ressources.game;
-				var zones = game.zones;
+				var match = ressources.match;
+				var zones = match.zones;
 				
 				if ( !zones[zone] ) {
 					zones[zone] = {};
@@ -762,9 +1008,10 @@ A3O = function () {
 			var that = this;
 	
 			jQuery(this.viewportContext.canvas).mousedown( function( e ) {
+				var x = e.pageX, y = e.pageY;
 				switch( e.which ) {
 					case 3:
-						that.startPanning( e.screenX, e.screenY );
+						that.startPanning( x, y );
 				}
 			});
 			
@@ -776,26 +1023,32 @@ A3O = function () {
 			});
 			
 			jQuery(this.viewportContext.canvas).mousemove( function( e ) {
+				var x = e.pageX, y = e.pageY;
 				if (that.panning) {
 					that.panned = true;
-					that.pan( e.screenX, e.screenY );
+					that.pan( x, y );
 					that.swapBuffers();
+					that.drawGrabbedUnits( x, y );
 				} else {
 					if (that.isCooledDown) {
 						that.isCooledDown = false;
-						that.clearLastCursorAttachment( );
 						if ( that.selectedZone ) {
 							var dirtyRect = expandRectangle(that.ressources.polygons[that.selectedZone].boundingbox, SELECT_GLOW_AMOUNT);
 							that.clearBoard( dirtyRect );
 							that.drawUnits( dirtyRect );
 						}
 						
-						
-						that.selectZone( e.pageX, e.pageY );
-						that.selectUnit( e.pageX, e.pageY );
+						that.selectZone( x, y );
+						that.selectUnit( x, y );
 						that.drawInterface( );
-						that.drawCursorAttachment( e.pageX, e.pageY );
 						that.swapBuffers( );
+						if ( that.selectedZone && that.grabbed.origin ) {
+							//that.drawPathIndicator( [ that.grabbed.origin, "EasternGermany", that.selectedZone ] );
+						}
+						that.drawGrabbedUnits( x, y );
+						// prevent flooding the execution queue with high laod operations
+						// by only allowing update on the canvas due mouse movement every
+						// 25 milli seconds.
 						setTimeout(function() { that.isCooledDown = true; }, 25);
 					}
 				}
@@ -809,14 +1062,12 @@ A3O = function () {
 						
 						if ( that.grabbed.origin && that.grabbed.origin != (zone = that.getZoneAt( x, y ) ) ) {
 							unitInfo = that.dropUnit( zone );
-							console.log( unitInfo );
 							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + 10 ) ;
-							that.clearLastCursorAttachment( );
 							that.clearBoard( placeRect );
 							that.drawUnits( placeRect );
 							that.drawInterface( placeRect );
-							that.drawCursorAttachment( x, y );
 							that.swapBuffers( );
+							that.drawGrabbedUnits( x, y );
 						} else if (unitInfo = that.getUnitAt( x, y )) {
 							
 							that.grabUnit( unitInfo );
@@ -825,25 +1076,25 @@ A3O = function () {
 							that.clearBoard( placeRect );
 							that.drawUnits( placeRect );
 							that.drawInterface( placeRect );
-							that.drawCursorAttachment( x, y );
 							that.swapBuffers( );
+							that.drawGrabbedUnits( x, y );
 						}
 				}
 			});
 			
 			jQuery(this.viewportContext.canvas).bind( 'contextmenu', function( e ) {
+				var x = e.pageX, y = e.pageY;
 				switch( e.which ) {
 				case 3:
 					if (!that.panned) {
 						var unitInfo = that.returnUnit();
 						if (unitInfo) {
 							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + 10 ) ;
-							that.clearLastCursorAttachment( );
 							that.clearBoard( placeRect );
 							that.drawUnits( placeRect );
 							that.drawInterface( placeRect );
-							that.drawCursorAttachment( e.pageX, e.pageY );
 							that.swapBuffers( );
+							that.drawGrabbedUnits( x, y );
 						}	
 					}
 			}
