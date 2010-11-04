@@ -40,7 +40,7 @@ class A3GameType extends GameType
 		return (boolean) $this->getOption( 'submerged' );
 	}
 	
-	public function isDefensless( )
+	public function isDefenseless( )
 	{
 		return !(boolean) $this->getOption( 'defense' );
 	}
