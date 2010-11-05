@@ -38,6 +38,8 @@ class BaseRegistry
 	 */
 	protected $m_elements = array( );
 	
+	private $m_precached = false;
+	
 	/** Instanciates the Registry.
 	 * 
 	 * The factory provides the methods to instanciate elements
@@ -110,8 +112,12 @@ class BaseRegistry
 	 * is (much) quicker than getting each element one by one and use of a wide
 	 * range of elements is anticipated. 
 	 */
-	public function precacheElements( )
+	public function precacheElements( $forceReload = false )
 	{
-		$this->m_elements = $this->m_factory->createAllProducts( );
+		if (!$this->m_precached || $forceReload) 
+		{
+			$this->m_elements = $this->m_factory->createAllProducts( );
+			$this->m_precached = true;
+		} 
 	}
 }
