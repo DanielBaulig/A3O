@@ -15,8 +15,10 @@ class MatchZonePDOFactory implements IFactory
 	protected $m_loadConnectionsSingleGameZone;
 	protected $m_loadPiecesSingleGameZone;
 	protected $m_loadOptionsSingleMatchZone;
+	protected $m_loadbasezonePiecesSingleGameZone;
 	
 	protected $m_loadBaseAllGameZones;
+	protected $m_loadBasezoneAllGameZones;
 
 	/** Constructs the MatchZone factory, setting up the queries
 	 * and the PDOStatement objects.
@@ -38,7 +40,6 @@ class MatchZonePDOFactory implements IFactory
 						
 		$this->m_loadBaseSingleGameZone = $this->m_pdo->prepare( $base_sql );	
 		$this->m_loadBaseSingleGameZone->bindValue( ':match_id', $this->m_match->getMatchId( ), PDO::PARAM_INT );
-
 		
 		$connections_sql =
 			'SELECT bz2.basezone_name AS zone FROM a3o_basezones AS bz INNER JOIN a3o_connections AS c ON'
@@ -54,6 +55,13 @@ class MatchZonePDOFactory implements IFactory
 		
 		$this->m_loadPiecesSingleGameZone = $this->m_pdo->prepare( $pieces_sql );
 		
+		$basezone_pieces_sql =
+			'SELECT t.type_name AS type, n.nation_name AS nation, p.pieces_count AS count'
+			. ' FROM a3o_basezonepieces AS p INNER JOIN a3o_types AS t ON t.type_id = p.basezonepieces_type'
+			. ' INNER JOIN a3o_nations AS n ON n.nation_id = p.basezonepieces_nation'
+			. ' WHERE p.basezonepieces_basezone = :basezone_id;';
+		
+		$this->m_loadBasezonePiecesSingleGameZone = $this->m_pdo->prepare( $basezone_pieces_sql );
 		
 		$options_sql =
 			'SELECT bzo.basezoneoption_name AS name, bzo.basezoneoption_value AS value FROM a3o_basezones AS bz INNER JOIN'
@@ -70,8 +78,16 @@ class MatchZonePDOFactory implements IFactory
 			. ' ON m.match_game = g.game_id LEFT JOIN a3o_nations AS n ON g.game_id = n.nation_game'
 			. ' AND z.zone_owner = n.nation_id WHERE z.zone_match = :match_id;';
 			
+		$all_basezone_sql = 
+			'SELECT bz.basezone_name AS name, n.nation_name AS owner, bz.basezone_id AS basezone FROM a3o_basezones AS bz'
+			. ' LEFT JOIN a3o_nations AS n ON bz.basezone_game = n.nation_game'
+			. ' AND bz.basezone_owner = n.nation_id WHERE bz.basezone_game = :game_id;';
+			
 		$this->m_loadBaseAllGameZones = $this->m_pdo->prepare( $all_base_sql );
 		$this->m_loadBaseAllGameZones->bindValue( ':match_id', $this->m_match->getMatchId( ), PDO::PARAM_INT );
+		
+		$this->m_loadBasezoneAllGameZones = $this->m_pdo->prepare( $all_basezone_sql );
+		$this->m_loadBasezoneAllGameZones->bindValue( ':game_id', $this->m_match->getGameId(), PDO::PARAM_INT );
 	}
 	
 	/** Loads all connections belonging to to basezone and returns them as an array.
@@ -111,6 +127,18 @@ class MatchZonePDOFactory implements IFactory
 		$this->m_loadPiecesSingleGameZone->execute( );
 		$pieces = array( );
 		while ( $row = $this->m_loadPiecesSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+		{
+			$pieces[$row['nation']][$row['type']] = $row['count'];
+		}
+		return $pieces;
+	}
+	
+	protected function loadBasezonePieces( $basezone_id )
+	{
+		$this->m_loadBasezonePiecesSingleGameZone->bindValue( ':basezone_id', $basezone_id, PDO::PARAM_INT );
+		$this->m_loadBasezonePiecesSingleGameZone->execute( );
+		$pieces = array( );
+		while ( $row = $this->m_loadBasezonePiecesSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
 			$pieces[$row['nation']][$row['type']] = $row['count'];
 		}
@@ -202,7 +230,25 @@ class MatchZonePDOFactory implements IFactory
 		return $zones;
 	}
 	
-	public function createMatchZonesFr
+	public function createAllProductsFromBasezone( )
+	{
+		$zones = array( );
+		$this->m_loadBasezoneAllGameZones->execute( );
+		while ( $zone = $this->m_loadBasezoneAllGameZones->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
+		{
+			$connections = $this->loadConnections( $zone['basezone'] );			
+			$pieces = $this->loadBasezonePieces( $zone['basezone'] );
+			$options = $this->loadOptions( $zone['basezone'] );
+			
+			$zone[MatchZone::PIECES] = $pieces;
+			$zone[MatchZone::CONNECTIONS] = $connections;
+			$zone[MatchZone::OPTIONS] = $options;
+			
+			$zones[ $zone[MatchZone::NAME] ] = $this->createObject( $zone );
+		}
+		
+		return $zones;
+	}
 }
 
 // Note to myself: Following Storer is just a concept.
