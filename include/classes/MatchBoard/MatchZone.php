@@ -30,7 +30,7 @@ class MatchZonePDOFactory implements IFactory
 		$this->m_match = $match;
 		
 		$base_sql = 		
-			'SELECT z.zone_id AS id, bz.basezone_name AS name, n.nation_name AS owner'
+			'SELECT z.zone_id AS id, bz.basezone_name AS name, n.nation_name AS owner, bz.basezone_id AS basezone'
 			. ' FROM a3o_zones AS z INNER JOIN a3o_basezones AS bz ON z.zone_basezone = bz.basezone_id'
 			. ' INNER JOIN a3o_matches AS m ON z.zone_match = m.match_id INNER JOIN a3o_games AS g'
 			. ' ON m.match_game = g.game_id LEFT JOIN a3o_nations AS n ON g.game_id = n.nation_game'
@@ -41,10 +41,9 @@ class MatchZonePDOFactory implements IFactory
 
 		
 		$connections_sql =
-			'SELECT bz2.basezone_name AS zone FROM a3o_zones AS z INNER JOIN a3o_basezones AS bz'
-			. ' ON bz.basezone_id = z.zone_basezone INNER JOIN a3o_connections AS c ON'
+			'SELECT bz2.basezone_name AS zone FROM a3o_basezones AS bz INNER JOIN a3o_connections AS c ON'
 			. ' c.connection_firstzone = bz.basezone_id INNER JOIN a3o_basezones AS bz2'
-			. ' ON bz2.basezone_id = c.connection_secondzone WHERE z.zone_id = :zone_id;';
+			. ' ON bz2.basezone_id = c.connection_secondzone WHERE bz.basezone_id = :basezone_id;';
 			
 		$this->m_loadConnectionsSingleGameZone = $this->m_pdo->prepare( $connections_sql );
 
@@ -57,15 +56,15 @@ class MatchZonePDOFactory implements IFactory
 		
 		
 		$options_sql =
-			'SELECT bzo.basezoneoption_name AS name, bzo.basezoneoption_value AS value FROM a3o_zones AS z'
-			. ' INNER JOIN a3o_basezones AS bz ON bz.basezone_id = z.zone_basezone INNER JOIN' 
-			. ' a3o_basezoneoptions AS bzo ON bzo.basezoneoption_basezone = bz.basezone_id WHERE z.zone_id = :zone_id;';
+			'SELECT bzo.basezoneoption_name AS name, bzo.basezoneoption_value AS value FROM a3o_basezones AS bz INNER JOIN'
+			. ' a3o_basezoneoptions AS bzo ON bzo.basezoneoption_basezone = bz.basezone_id'
+			. ' WHERE bz.basezone_id = :basezone_id;';
 			
 		$this->m_loadOptionsSingleMatchZone = $this->m_pdo->prepare( $options_sql );
 		
 		
 		$all_base_sql = 
-			'SELECT z.zone_id AS id, bz.basezone_name AS name, n.nation_name AS owner'
+			'SELECT z.zone_id AS id, bz.basezone_name AS name, n.nation_name AS owner, bz.basezone_id AS basezone'
 			. ' FROM a3o_zones AS z INNER JOIN a3o_basezones AS bz ON z.zone_basezone = bz.basezone_id'
 			. ' INNER JOIN a3o_matches AS m ON z.zone_match = m.match_id INNER JOIN a3o_games AS g'
 			. ' ON m.match_game = g.game_id LEFT JOIN a3o_nations AS n ON g.game_id = n.nation_game'
@@ -75,7 +74,7 @@ class MatchZonePDOFactory implements IFactory
 		$this->m_loadBaseAllGameZones->bindValue( 'match_id', $this->m_match->getMatchId( ), PDO::PARAM_INT );
 	}
 	
-	/** Loads all connections belonging to to $zone_id and returns them as an array.
+	/** Loads all connections belonging to to basezone and returns them as an array.
 	 * 
 	 * Note, that "belonging to" means that the zone is listed in the
 	 * firstzone field. If it is only listed in the secondzone field
@@ -83,14 +82,15 @@ class MatchZonePDOFactory implements IFactory
 	 * tables is a directed edge.
 	 * That means that you eithr need two entries for bidirectional
 	 * connections or implement the hasConnection method to actually
-	 * check in both directions. This is the current implementation.
+	 * check in both directions or override loadConnections to load 
+	 * connections "from" both fields. This is the current implementation.
 	 * 
 	 * @param int $zone_id
 	 * @return array
 	 */
-	protected function loadConnections( $zone_id )
+	protected function loadConnections( $basezone_id )
 	{
-		$this->m_loadConnectionsSingleGameZone->bindValue( ':zone_id', $zone_id, PDO::PARAM_INT );
+		$this->m_loadConnectionsSingleGameZone->bindValue( ':basezone_id', $basezone_id, PDO::PARAM_INT );
 		$this->m_loadConnectionsSingleGameZone->execute( );
 		$connections = array ( );
 		while ( $connection = $this->m_loadConnectionsSingleGameZone->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
@@ -117,23 +117,14 @@ class MatchZonePDOFactory implements IFactory
 		return $pieces;
 	}
 	
-	//TODO: Profile performance boost zone_id vs basezone_id
-	/** Loads all options belonging to the basezone to which $zone_id belongs and returns them as an array
+   /** Loads all options belonging to the basezone and returns them as an array
 	 * 
-	 * Regarding todo: the options loaded aren't actually direcly connected to the zone,
-	 * but rather to the basezone of the zone. Since there is no direct instanciation of
-	 * basezones (there is basicly no need) the loading is placed in the MatchZone factory
-	 * and the options are stored in the MatchZone objects. However, the loading is for conveinience
-	 * reasons based on the $zone_id and not the basezone_id, although basezone_id could be 
-	 * taken from a previous query while loading the zone and could be used to load the options
-	 * faster. Maybe this should be changed to take basezone_id instead of zone_id.
-	 * 
-	 * @param int $zone_id
+	 * @param int $basezone_id
 	 * @return array
 	 */
-	protected function loadOptions( $zone_id )
+	protected function loadOptions( $basezone_id )
 	{
-		$this->m_loadOptionsSingleMatchZone->bindValue( ':zone_id', $zone_id, PDO::PARAM_INT );
+		$this->m_loadOptionsSingleMatchZone->bindValue( ':basezone_id', $basezone_id, PDO::PARAM_INT );
 		$this->m_loadOptionsSingleMatchZone->execute( );
 		
 		$options = array( );
@@ -174,9 +165,9 @@ class MatchZonePDOFactory implements IFactory
 			throw new DomainException('Specified zone ' . $key . ' not valid.');
 		}
 
-		$connections = $this->loadConnections( $zone['id'] );		
+		$connections = $this->loadConnections( $zone['basezone'] );		
 		$pieces = $this->loadPieces( $zone['id'] );
-		$options = $this->loadOptions( $zone['id'] );
+		$options = $this->loadOptions( $zone['basezone'] );
 		
 		$zone[MatchZone::CONNECTIONS] = $connections;
 		$zone[MatchZone::PIECES] = $pieces;
@@ -196,9 +187,9 @@ class MatchZonePDOFactory implements IFactory
 		$this->m_loadBaseAllGameZones->execute( );
 		while ( $zone = $this->m_loadBaseAllGameZones->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
 		{
-			$connections = $this->loadConnections( $zone['id'] );			
+			$connections = $this->loadConnections( $zone['basezone'] );			
 			$pieces = $this->loadPieces( $zone['id'] );
-			$options = $this->loadOptions( $zone['id'] );
+			$options = $this->loadOptions( $zone['basezone'] );
 			
 			$zone[MatchZone::PIECES] = $pieces;
 			$zone[MatchZone::CONNECTIONS] = $connections;
