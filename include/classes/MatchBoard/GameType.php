@@ -48,7 +48,7 @@ class GameTypePDOFactory implements IFactory
 		// this may be of lower performance but is the better design approach imo
 		$this->m_pdo = $pdo;
 		$this->m_match = $match;
-		$this->m_specialFactory;
+		//$this->m_specialFactory;
 
 		$sql_types = 'SELECT type_id AS id, type_name AS name FROM a3o_types WHERE type_game = :game_id;';
 

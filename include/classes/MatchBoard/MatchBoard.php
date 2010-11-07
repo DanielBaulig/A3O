@@ -51,4 +51,18 @@ abstract class MatchBoard
 	{
 		return $this->m_allianceRegistry->getElement( $alliance, $reload );
 	}
+	
+	public function precacheZones( )
+	{
+		$this->m_zoneRegistry->precacheElements( );
+	}
+	
+	public function storeZones(Storer $zoneStorer)
+	{
+		$zones = $this->m_zoneRegistry->getAllElements();
+		foreach($zones as $zone)
+		{
+			$zoneStorer->store($zone);
+		}
+	}
 }

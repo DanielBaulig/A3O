@@ -1,5 +1,5 @@
 <?php
-class TurnSequence extends BaseState
+/*class TurnSequence extends BaseState
 {
 	protected $m_turnOrder;
 	protected $m_playerWonExit = null;
@@ -54,4 +54,4 @@ class TurnSequence extends BaseState
 	{
 		throw new Exception( 'TurnSequence cannot handle actions.' );
 	}
-}  
+}  */

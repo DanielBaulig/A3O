@@ -779,6 +779,7 @@ A3O = function () {
 			}
 		},
 		loadMatchData: function ( match, doneCallback ) {
+			jQuery.getJSON('match.php?start=1');
 			this.ressources.match = {
 					zones : {
 						Belorussia: {

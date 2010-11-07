@@ -1,7 +1,7 @@
 <?php
 class AARMatchPlayerPDOFactory extends A3MatchPlayerPDOFactory
 {
-	protected function createObject( $data )
+	protected function createObject( array $data )
 	{
 		return new AARMatchPlayer( $this->m_match, $data );
 	}
@@ -16,8 +16,7 @@ class AARMatchPlayer extends A3MatchPlayer
 			$this->hasJetFightersResearched( ) ||
 			$this->hasLongRangeAircraftResearched( ) ||
 			$this->hasRocketsResearched( ) ||
-			$this->hasSuperSubsResearched( ) ||
-			$this->hasTechnologyResearched( );
+			$this->hasSuperSubsResearched( );
 	}
 	
 	public function researchJetFighters( )

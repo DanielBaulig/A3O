@@ -21,6 +21,6 @@ class A3PDOMatchBoard extends MatchBoard
 		$this->m_playerRegistry = new BaseRegistry( new A3MatchPlayerPDOFactory($pdo, $this) );
 		$this->m_nationRegistry = new BaseRegistry( new A3GameNationPDOFactory($pdo, $this) );
 		$this->m_typeRegistry = new BaseRegistry( new A3GameTypePDOFactory($pdo, $this) );
-		$this->m_allianceRegistry = new BaseRegistry( new A3GameAlliancePDOFactory($pdo, $this) );			
+		$this->m_allianceRegistry = new BaseRegistry( new A3GameAlliancePDOFactory($pdo, $this) );
 	}
 }

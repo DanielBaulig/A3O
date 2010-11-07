@@ -71,7 +71,7 @@ class MatchZonePDOFactory implements IFactory
 			. ' AND z.zone_owner = n.nation_id WHERE z.zone_match = :match_id;';
 			
 		$this->m_loadBaseAllGameZones = $this->m_pdo->prepare( $all_base_sql );
-		$this->m_loadBaseAllGameZones->bindValue( 'match_id', $this->m_match->getMatchId( ), PDO::PARAM_INT );
+		$this->m_loadBaseAllGameZones->bindValue( ':match_id', $this->m_match->getMatchId( ), PDO::PARAM_INT );
 	}
 	
 	/** Loads all connections belonging to to basezone and returns them as an array.
@@ -201,6 +201,8 @@ class MatchZonePDOFactory implements IFactory
 		
 		return $zones;
 	}
+	
+	public function createMatchZonesFr
 }
 
 // Note to myself: Following Storer is just a concept.
