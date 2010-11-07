@@ -31,11 +31,6 @@ abstract class MatchBoard
 		return $this->m_gameId;
 	}
 	
-	public function setUpMatch( )
-	{
-		$this->m_zoneRegistry->createAllProductsFromBasezone( );
-	}
-	
 	public function getZone( $zone, $reload = false )
 	{
 		return $this->m_zoneRegistry->getElement( $zone, $reload );
@@ -65,9 +60,15 @@ abstract class MatchBoard
 	public function storeZones(Storer $zoneStorer)
 	{
 		$zones = $this->m_zoneRegistry->getAllElements();
+		$first = true;
 		foreach($zones as $zone)
 		{
+			if (!$first)
+			{
+				$zoneStorer->next();
+			}
 			$zoneStorer->store($zone);
+			$first = false;			
 		}
 	}
 }

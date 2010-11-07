@@ -15,10 +15,11 @@ class MatchZonePDOFactory implements IFactory
 	protected $m_loadConnectionsSingleGameZone;
 	protected $m_loadPiecesSingleGameZone;
 	protected $m_loadOptionsSingleMatchZone;
-	protected $m_loadbasezonePiecesSingleGameZone;
 	
 	protected $m_loadBaseAllGameZones;
-	protected $m_loadBasezoneAllGameZones;
+
+	protected $m_populateZonesFromBasezones;
+	protected $m_populatePiecesFromBasezones;
 
 	/** Constructs the MatchZone factory, setting up the queries
 	 * and the PDOStatement objects.
@@ -55,14 +56,6 @@ class MatchZonePDOFactory implements IFactory
 		
 		$this->m_loadPiecesSingleGameZone = $this->m_pdo->prepare( $pieces_sql );
 		
-		$basezone_pieces_sql =
-			'SELECT t.type_name AS type, n.nation_name AS nation, p.pieces_count AS count'
-			. ' FROM a3o_basezonepieces AS p INNER JOIN a3o_types AS t ON t.type_id = p.basezonepieces_type'
-			. ' INNER JOIN a3o_nations AS n ON n.nation_id = p.basezonepieces_nation'
-			. ' WHERE p.basezonepieces_basezone = :basezone_id;';
-		
-		$this->m_loadBasezonePiecesSingleGameZone = $this->m_pdo->prepare( $basezone_pieces_sql );
-		
 		$options_sql =
 			'SELECT bzo.basezoneoption_name AS name, bzo.basezoneoption_value AS value FROM a3o_basezones AS bz INNER JOIN'
 			. ' a3o_basezoneoptions AS bzo ON bzo.basezoneoption_basezone = bz.basezone_id'
@@ -78,16 +71,24 @@ class MatchZonePDOFactory implements IFactory
 			. ' ON m.match_game = g.game_id LEFT JOIN a3o_nations AS n ON g.game_id = n.nation_game'
 			. ' AND z.zone_owner = n.nation_id WHERE z.zone_match = :match_id;';
 			
-		$all_basezone_sql = 
-			'SELECT bz.basezone_name AS name, n.nation_name AS owner, bz.basezone_id AS basezone FROM a3o_basezones AS bz'
-			. ' LEFT JOIN a3o_nations AS n ON bz.basezone_game = n.nation_game'
-			. ' AND bz.basezone_owner = n.nation_id WHERE bz.basezone_game = :game_id;';
-			
 		$this->m_loadBaseAllGameZones = $this->m_pdo->prepare( $all_base_sql );
 		$this->m_loadBaseAllGameZones->bindValue( ':match_id', $this->m_match->getMatchId( ), PDO::PARAM_INT );
 		
-		$this->m_loadBasezoneAllGameZones = $this->m_pdo->prepare( $all_basezone_sql );
-		$this->m_loadBasezoneAllGameZones->bindValue( ':game_id', $this->m_match->getGameId(), PDO::PARAM_INT );
+		$zones_from_basezones_sql = 'INSERT INTO a3o_zones (zone_basezone, zone_owner, zone_match)'
+			. ' (SELECT bz.basezone_id, bz.basezone_owner, :match_id' 
+			. ' FROM a3o_basezones AS bz WHERE bz.basezone_game = :game_id);';
+
+		$this->m_populateZonesFromBasezones = $this->m_pdo->prepare( $zones_from_basezones_sql );
+		$this->m_populateZonesFromBasezones->bindValue( ':match_id', $this->m_match->getMatchId( ) );
+		$this->m_populateZonesFromBasezones->bindValue( ':game_id', $this->m_match->getGameId( ) );
+			
+		$pieces_from_basezones_sql = 'INSERT INTO a3o_pieces (pieces_type, pieces_nation, pieces_zone, pieces_count)'
+			. ' SELECT bzp.basezonepieces_type, bzp.basezonepieces_nation, z.zone_id, bzp.basezonepieces_count'
+			. ' FROM a3o_basezonepieces AS bzp INNER JOIN a3o_zones AS z ON bzp.basezonepieces_basezone = z.zone_basezone'
+			. ' WHERE z.zone_match = :match_id';
+			
+		$this->m_populatePiecesFromBasezones = $this->m_pdo->prepare( $pieces_from_basezones_sql );
+		$this->m_populatePiecesFromBasezones->bindValue( ':match_id', $this->m_match->getMatchId( ) );
 	}
 	
 	/** Loads all connections belonging to to basezone and returns them as an array.
@@ -133,7 +134,7 @@ class MatchZonePDOFactory implements IFactory
 		return $pieces;
 	}
 	
-	protected function loadBasezonePieces( $basezone_id )
+	/*protected function loadBasezonePieces( $basezone_id )
 	{
 		$this->m_loadBasezonePiecesSingleGameZone->bindValue( ':basezone_id', $basezone_id, PDO::PARAM_INT );
 		$this->m_loadBasezonePiecesSingleGameZone->execute( );
@@ -143,7 +144,7 @@ class MatchZonePDOFactory implements IFactory
 			$pieces[$row['nation']][$row['type']] = $row['count'];
 		}
 		return $pieces;
-	}
+	}*/
 	
    /** Loads all options belonging to the basezone and returns them as an array
 	 * 
@@ -232,22 +233,9 @@ class MatchZonePDOFactory implements IFactory
 	
 	public function createAllProductsFromBasezone( )
 	{
-		$zones = array( );
-		$this->m_loadBasezoneAllGameZones->execute( );
-		while ( $zone = $this->m_loadBasezoneAllGameZones->fetch( PDO::FETCH_ASSOC, PDO::FETCH_ORI_NEXT ) )
-		{
-			$connections = $this->loadConnections( $zone['basezone'] );			
-			$pieces = $this->loadBasezonePieces( $zone['basezone'] );
-			$options = $this->loadOptions( $zone['basezone'] );
-			
-			$zone[MatchZone::PIECES] = $pieces;
-			$zone[MatchZone::CONNECTIONS] = $connections;
-			$zone[MatchZone::OPTIONS] = $options;
-			
-			$zones[ $zone[MatchZone::NAME] ] = $this->createObject( $zone );
-		}
-		
-		return $zones;
+		$zones = array( );		
+		$this->m_populateZonesFromBasezones->execute();
+		$this->m_populatePiecesFromBasezones->execute();
 	}
 }
 
@@ -265,6 +253,10 @@ class MatchZoneStreamStorer extends Storer
 		$data = $this->getStoreableData( $zone );
 		
 		fwrite($this->m_stream, ($this->m_named ? '"'.$data[MatchZone::NAME].'":' : '') . json_encode( $data ) );
+	}
+	public function next()
+	{
+		fwrite($this->m_stream, ',' );
 	}
 }
 
@@ -322,7 +314,7 @@ class MatchZonePDOStorer extends Storer
 	public function store( IStoreable $zone )
 	{
 		$data = $this->getStoreableData( $zone );
-		
+		var_dump($data);
 		$this->m_pdo->beginTransaction( );
 		try 
 		{

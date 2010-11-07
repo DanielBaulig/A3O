@@ -234,8 +234,8 @@ A3O = function () {
 				var places = ressources.polygons[z].places;
 				var i = 0;
 				
-				for(var n in zone) {
-					var nation = zone[n];
+				for(var n in zone.pieces) {
+					var nation = zone.pieces[n];
 					
 					for(var u in nation) {
 						var unit = nation[u];
@@ -690,8 +690,10 @@ A3O = function () {
 			this.loadMatchData( match, delayedCallback );
 		},
 		loadSprites: function ( doneCallback ) {
-			var nations = ['Germany','Russia','China','USA','Britain','Japan'];
-			var units = ['infantry','armour','factory'];
+			var nations = ['Germans','Russians','Chinese','Americans','British','Japanese','Neutral'];
+			var units = ['infantry','armour','factory','submarine','fighter','transport',
+			             'aaGun','artillery','battlecruiser','battleship',
+						 'bomber','carrier','cruiser','destroyer'];
 			var i,j, nlen = nations.length, ulen = units.length;
 			
 			var delayedCallback = createCallback( nlen * ulen, doneCallback );
@@ -779,30 +781,15 @@ A3O = function () {
 			}
 		},
 		loadMatchData: function ( match, doneCallback ) {
-			jQuery.getJSON('match.php?start=1');
-			this.ressources.match = {
-					zones : {
-						Belorussia: {
-							Germany: {
-								infantry: 3,
-								armour: 1
-							},
-							Japan: {
-								infantry: 1
-							}
-						},
-						WesternGermany: {
-							Germany: {
-								infantry: 1,
-								armour: 1,
-								factory: 1
-							}
-						}
-					},
-					active: "Germany",
-					youAre: "Germany"
-			};
-			doneCallback();
+			var that = this;
+			jQuery.getJSON('match.php?game=1&match=1', function(data) {
+				that.ressources.match = {
+						zones : data,
+						active: "Germans",
+						youAre: "Germans"
+				};
+				doneCallback();
+			});
 		},
 		transformCoordinates: function (x, y) {
 			var offset = jQuery(this.viewportContext.canvas).offset(); // this propably has a fucking big overhead!
@@ -849,7 +836,7 @@ A3O = function () {
 		 */
 		getUnitInPlace: function ( zone, place ) {
 			var ressources = this.ressources;
-			var z = ressources.match.zones[zone];
+			var z = ressources.match.zones[zone].pieces;
 			var counter = place;
 			
 			for (var n in z) {
@@ -867,7 +854,7 @@ A3O = function () {
 			return false;
 		},
 		getPlaceOf: function( zone, unit, nation ) {
-			var z = this.ressources.match.zones[zone];
+			var z = this.ressources.match.zones[zone].pieces;
 			var counter = 0;
 			
 			for (var n in z) {
@@ -933,7 +920,7 @@ A3O = function () {
 					if ( !grabbed.origin || grabbed.origin == unitInfo.zone ) {
 						grabbed.origin = unitInfo.zone;
 						grabbed.units.push(unitInfo);
-						if (!--this.ressources.match.zones[grabbed.origin][this.ressources.match.youAre][unitInfo.unit]) {
+						if (!--this.ressources.match.zones[grabbed.origin].pieces[this.ressources.match.youAre][unitInfo.unit]) {
 							this.selectedUnit = false;
 						}
 					} 
@@ -949,15 +936,15 @@ A3O = function () {
 				var zones = match.zones;
 				
 				if ( !zones[zone] ) {
-					zones[zone] = {};
+					zones[zone] = { pieces: {} };
 				}
-				if ( !zones[zone][unitInfo.nation] ) {
-					zones[zone][unitInfo.nation] = {};
+				if ( !zones[zone].pieces[unitInfo.nation] ) {
+					zones[zone].pieces[unitInfo.nation] = {};
 				}
-				if ( !zones[zone][unitInfo.nation][unitInfo.unit] ) {
-					zones[zone][unitInfo.nation ][unitInfo.unit] = 0;
+				if ( !zones[zone].pieces[unitInfo.nation][unitInfo.unit] ) {
+					zones[zone].pieces[unitInfo.nation ][unitInfo.unit] = 0;
 				}
-				zones[zone][unitInfo.nation ][unitInfo.unit]++;
+				zones[zone].pieces[unitInfo.nation ][unitInfo.unit]++;
 				if (!grabbed.units.length) {
 					grabbed.origin = false;
 				}
