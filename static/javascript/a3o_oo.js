@@ -242,14 +242,23 @@ A3O = function () {
 						var place = places[i++];
 						
 						if ( unit > 0 ) {
-							bufferContext.drawImage( sprites[n][u], place[0], place[1], UNIT_WIDTH, UNIT_HEIGHT );
-							if (unit > 1) {
+							var placeULX = place[0];
+							var placeULY = place[1];
+							var placeLRX = place[0] + UNIT_WIDTH;
+							var placeLRY = place[1] + UNIT_HEIGHT;
+							// if theres a dirtyRect check if the unit's place lies within the dirtyRect
+							// this provided a tenfold speed increase compared to only using clip
+							if (!dirtyRect || (placeULX < dirtyRect.lr[0] && placeLRX > dirtyRect.ul[0] 
+									&& placeLRY > dirtyRect.ul[1] && placeULY < dirtyRect.lr[1]))	{								
+								bufferContext.drawImage( sprites[n][u], placeULX, placeULY, UNIT_WIDTH, UNIT_HEIGHT );
+								if (unit > 1) {
+									var textStart = placeULX + Math.floor(UNIT_WIDTH/4);
+									bufferContext.beginPath();
+									bufferContext.strokeText( unit, textStart, placeLRY );
+									bufferContext.closePath();
 								
-								bufferContext.beginPath();
-								bufferContext.strokeText( unit, place[0] + Math.floor(UNIT_WIDTH/4), place[1] + UNIT_HEIGHT );
-								bufferContext.closePath();
-							
-								bufferContext.fillText( unit, place[0] + Math.floor(UNIT_WIDTH/4), place[1] + UNIT_HEIGHT );
+									bufferContext.fillText( unit, textStart, placeLRY );
+								}
 							}
 						}
 					}
