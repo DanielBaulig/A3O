@@ -1,18 +1,15 @@
-THIS SOFTWARE IS NOT LICENCED UNDER ANY SPECIFIC LICENCE TO THE GENERAL PUBLIC YET.
+THIS SOFTWARE IS LICENSED UNDER THE TERMS OF THE MODIFIED XFREE86 MIT LICENSE, 
+SEE LICENSE FOR DETAILS. 
 
-While I propably will choose an open source maybe even copyleft licence I am not
-sure on what licence I will choose. Please respect that I will not grant any
-rights to anyone before I am settled on what licence I will choose for my project.
+This software is currently under heavy development and by no means ready to use.
+If you would like to see the current version in action, have a look at it here:
+http://www.danielbaulig.de/A3O/
+I try to keep this installation up to the current head of this repositry most
+of the time. 
 
-While you could pull yourself a copy of this repository you will most likely not 
-be able to run the software because of missing database data and assets - and 
-because it is heavily under development. If you want to see the latest prototype
-live please visit http://www.danielbaulig.de/A3O/ 
-While this prototype is pretty much outdated and my current plans point to a more
-specialized and streamlined implementation of the rendering frontend it gives a
-brief impression on how the frontend might look like in the future.
+This project uses code and assets from other open source projects, including:
 
-All assets and (none code) static ressources used in the prototype are included 
-in this project but originate from the TripleA project and are licenced under GNU 
-GPL. Please refer to http://triplea.sourceforge.net for more information on the 
-TripleA project. 
+- TripleA (http://triplea.sourceforge.net, most Assets, GPL v3)
+- rtree (http://stackulator.com/rtree/, rtree.js, MIT)
+- jQuery (http://jquery.com/, jquery-1.4.3.min.js, MIT)
+- jQuery Mousewheel Plugin (http://brandonaaron.net, MIT)

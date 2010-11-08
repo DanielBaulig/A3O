@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	<title>Insert title here</title>
 	<script type="text/javascript" src="static/javascript/jquery-1.4.3.min.js"></script>
 	<script type="text/javascript" src="static/javascript/jquery.mousewheel.min.js"></script>
 	<script type="text/javascript" src="static/javascript/rtree.js"></script>
 	<script type="text/javascript" src="static/javascript/a3o_oo.js"></script>
-	<script type="text/javascript">
+	<script>
 		jQuery(document).ready(function(){
 			A3O.loadRessources( <?php echo (int) $_REQUEST['g']; ?>, function(){ $('#loading').hide();  A3O.setup( document.getElementById('map').getContext('2d') ); });
 			jQuery('.button').mousedown( function() {
@@ -57,10 +57,15 @@
 			</div>
 			<br/>
 			<p>
-			mouswheel: zoom map<br />
 			right mousbutton: pan map<br />
-			left mousebutton: find path<br /> 
-			All assets and static ressources found on this webpage are not part of this project but originate from the TripleA project and are licenced under GNU GPL.<br /> 
-			Please refer to <a href="http://triplea.sourceforge.net">http://triplea.sourceforge.net</a> for more information on the TripleA project.</p>
+			left mousebutton: pick up (german) units<br />
+			right mousbutton (while unit is grabbed): return unit<br />
+			left mousebutton (while unit is grabbed): drop unit here<br /></p> 
+			<p>
+			Please visit the projects <a href="https://github.com/DanielBaulig/A3O/">github page</a>.
+			This software is (c) 2010 by Daniel Baulig and licensed under a modified MIT license.<br/>
+			This software uses parts of the <a href="http://triplea.sourceforge.net/mywiki">TripleA</a> and other free software projects. Please
+			refer to the <a href="README">README</a> and <a href="LICENSE">LICENSE</a> files for more information on license terms and used third party software.
+			</p>
 </body>
 </html>
