@@ -8,6 +8,7 @@ A3O = function () {
 	const UNIT_WIDTH = 24;
 	const UNIT_HEIGHT = 24;
 	const UNIT_SHADOW = 2;
+	const UNIT_COUNTER_SIZE = 15;
 	
 	const DEBUGGING = false;
 	const DRAW_BOUNDING_BOXES = DEBUGGING;
@@ -227,7 +228,7 @@ A3O = function () {
 			//bufferContext.lineWidth = 1;
 			bufferContext.fillStyle = 'white';	
 			bufferContext.strokeStyle = 'black';
-			bufferContext.font = 'bold 10pt Sans-serif';
+			bufferContext.font = 'bold ' + UNIT_COUNTER_SIZE + 'px Sans-serif';
 			
 			for (var z in zones) {
 				var zone = zones[z];
@@ -249,7 +250,7 @@ A3O = function () {
 							// if theres a dirtyRect check if the unit's place lies within the dirtyRect
 							// this provided a tenfold speed increase compared to only using clip
 							if (!dirtyRect || (placeULX < dirtyRect.lr[0] && placeLRX > dirtyRect.ul[0] 
-									&& placeLRY > dirtyRect.ul[1] && placeULY < dirtyRect.lr[1]))	{								
+									&& (placeLRY + UNIT_COUNTER_SIZE) > dirtyRect.ul[1] && placeULY < dirtyRect.lr[1]))	{								
 								bufferContext.drawImage( sprites[n][u], placeULX, placeULY, UNIT_WIDTH, UNIT_HEIGHT );
 								if (unit > 1) {
 									var textStart = placeULX + Math.floor(UNIT_WIDTH/4);
@@ -1059,7 +1060,7 @@ A3O = function () {
 						
 						if ( that.grabbed.origin && that.grabbed.origin != (zone = that.getZoneAt( x, y ) ) ) {
 							unitInfo = that.dropUnit( zone );
-							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + 10 ) ;
+							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + UNIT_COUNTER_SIZE ) ;
 							that.clearBoard( placeRect );
 							that.drawUnits( placeRect );
 							that.drawInterface( placeRect );
@@ -1069,7 +1070,7 @@ A3O = function () {
 							
 							that.grabUnit( unitInfo );
 							
-							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + 10 ) ;
+							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + UNIT_COUNTER_SIZE ) ;
 							that.clearBoard( placeRect );
 							that.drawUnits( placeRect );
 							that.drawInterface( placeRect );
@@ -1086,7 +1087,7 @@ A3O = function () {
 					if (!that.panned) {
 						var unitInfo = that.returnUnit();
 						if (unitInfo) {
-							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + 10 ) ;
+							var placeRect = expandRectangle( that.getPlaceRect( unitInfo.zone, unitInfo.place ), UNIT_SHADOW + UNIT_COUNTER_SIZE ) ;
 							that.clearBoard( placeRect );
 							that.drawUnits( placeRect );
 							that.drawInterface( placeRect );
