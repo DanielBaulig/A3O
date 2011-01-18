@@ -23,6 +23,7 @@
 			border: 1px solid black;
 			background-color: pink;
 			cursor:pointer;
+			width: 100px;
 		}
 		.button.pressed
 		{
@@ -38,20 +39,22 @@
 			 * double click or else the user will constantly select the 
 			 * canvas and other elements.
 			 */
-			-moz-user-select: none; 
-    		-khtml-user-select: none;
-		
+			user-select: none;
+   			-o-user-select:none;
+   			-moz-user-select: none;
+   			-khtml-user-select: none;
+   			-webkit-user-select: none;		
 		}
 	</style>
 </head>
 <body>
 			This is a development version of 'A3O', a browser based Tripple A / Axis & Allies clone. It is for testing only.<br/>
 			<b id="loading">Loading ressources... please be patient.</b><br/>
-		
+
 			<canvas height="600" width="1000" id="map" style="border:solid black;">
 			You need HTML5 Canvas to view this webpage. You can get a HTML5 capable browser <a href="http://www.google.com/chrome/">here</a>.
 			</canvas>
-			<div style="float:right">
+			<div>
 				<div class="button" onclick="A3O.drawBoard(false);A3O.swapBuffers();">Redraw Board</div>
 				<div class="button" onclick="A3O.drawUnits();A3O.swapBuffers();">Redraw Units</div>
 			</div>
