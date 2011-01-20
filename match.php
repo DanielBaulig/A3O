@@ -14,7 +14,7 @@ $match = new AARPDOMatchBoard($pdo, $game_id, $match_id );
 
 $match->precacheZones();
 
-header('content-type: application/json; charset=utf8');
+header('content-type: application/json; charset=utf-8');
 echo '{';
 $match->storeZones(new MatchZoneStreamStorer(fopen('php://output', 'w+')));
 echo '}';

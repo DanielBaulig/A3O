@@ -1,19 +1,19 @@
 A3O = function () { 
 	// CONSTANTS
-	const GAME_NAME = 'big_world';
+	var GAME_NAME = 'big_world';
 	
-	const BOARD_WIDTH = 4876;
-	const BOARD_HEIGHT = 2278;
-	const SELECT_GLOW_AMOUNT = 10;
-	const UNIT_WIDTH = 24;
-	const UNIT_HEIGHT = 24;
-	const UNIT_SHADOW = 2;
-	const UNIT_COUNTER_SIZE = 15;
+	var BOARD_WIDTH = 4876;
+	var BOARD_HEIGHT = 2278;
+	var SELECT_GLOW_AMOUNT = 10;
+	var UNIT_WIDTH = 24;
+	var UNIT_HEIGHT = 24;
+	var UNIT_SHADOW = 2;
+	var UNIT_COUNTER_SIZE = 15;
 	
-	const DEBUGGING = false;
-	const DRAW_BOUNDING_BOXES = DEBUGGING;
-	const DRAW_CENTERS = DEBUGGING;
-	const DRAW_PLACES = DEBUGGING;
+	var DEBUGGING = false;
+	var DRAW_BOUNDING_BOXES = DEBUGGING;
+	var DRAW_CENTERS = DEBUGGING;
+	var DRAW_PLACES = DEBUGGING;
 	
 	// HELPER FUNCTIONS
 	var createCallback = function (limit, fn) {
@@ -159,7 +159,6 @@ A3O = function () {
 	
 	// A3O GAME OBJECT
 	return {
-		bezierControlPoints: [],
 		/**
 		 * @var Indicates if the player is currently panning the map.
 		 */
@@ -341,11 +340,12 @@ A3O = function () {
 			y = y - coords.top;
 			var grabbed = this.grabbed;
 			
-			if ( grabbed.origin ) {
+			if ( grabbed.units ) {
 				var units = grabbed.units;
 				var ulen = units.length;
 				for (var i = 0; i < ulen; i++ ) {
 					var unit = units[i];
+
 					var image = this.ressources.sprites[unit.nation][unit.unit];
 					viewportContext.drawImage( image, x + UNIT_WIDTH * i, y + UNIT_HEIGHT * i, UNIT_WIDTH, UNIT_HEIGHT );
 				}
@@ -626,8 +626,8 @@ A3O = function () {
 			var viewportOffsetX = this.viewportOffset.x;
 			var viewportOffsetY = this.viewportOffset.y;
 			
-			var viewportCanvasWidth = viewportContext.canvas.width; // <- is this DOM touching? I believe so.
-			var viewportCanvasHeight = viewportContext.canvas.height; // <- is this DOM touching? I believe so.
+			var viewportCanvasWidth = viewportContext.canvas.width;
+			var viewportCanvasHeight = viewportContext.canvas.height;
 
 			/* Chrome and some other HTML5 browser do not like it, if you
 			 * try to draw more of an image than there is data in the eg (draw
@@ -923,12 +923,16 @@ A3O = function () {
 		selectUnit: function (x, y) {
 			this.selectedUnit = this.getUnitAt(x, y);
 		},
-		grabUnit: function ( unitInfo ) {
+		grabUnit: function ( unitInfo, stack ) {
 			if ( unitInfo ) {
+				console.log(unitInfo);
 				var grabbed = this.grabbed;
 				if ( unitInfo.nation  == this.ressources.match.youAre ) {
 					if ( !grabbed.origin || grabbed.origin == unitInfo.zone ) {
 						grabbed.origin = unitInfo.zone;
+						if (!stack) {
+							unitInfo.count = 1;
+						}
 						grabbed.units.push(unitInfo);
 						if (!--this.ressources.match.zones[grabbed.origin].pieces[this.ressources.match.youAre][unitInfo.unit]) {
 							this.selectedUnit = false;
@@ -1046,8 +1050,8 @@ A3O = function () {
 						that.drawGrabbedUnits( x, y );
 						// prevent flooding the execution queue with high laod operations
 						// by only allowing update on the canvas due mouse movement every
-						// 25 milli seconds.
-						setTimeout(function() { that.isCooledDown = true; }, 25);
+						// 10 milli seconds.
+						setTimeout(function() { that.isCooledDown = true; }, 10);
 					}
 				}
 			});
